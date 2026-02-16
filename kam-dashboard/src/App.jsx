@@ -1023,7 +1023,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
    ================================================================ */
 function DashboardContent() {
   const {
-    isLive, lastUpdated, data,
+    isLive, lastUpdated, data, loading,
     annualMetrics, monthlyBilling, monthlyCollection,
     quarterlyQBRs, quarterlyHeroStories,
     billingTotals, collectionTotals,
@@ -1169,8 +1169,8 @@ function DashboardContent() {
         </div>
       </header>
 
-      {/* ====== Function Placeholder for non-KAM functions ====== */}
-      {(selectedFunction !== 'KAM' || !data) && selectedFunction && (
+      {/* ====== Function Placeholder for non-KAM functions (hidden during initial load) ====== */}
+      {!loading && (selectedFunction !== 'KAM' || !data) && selectedFunction && (
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           padding: 40, textAlign: 'center', gap: 16,

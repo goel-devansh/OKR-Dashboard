@@ -16,6 +16,7 @@ export function useKamData() {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true); // true during initial load
   const [availableFunctions, setAvailableFunctions] = useState(['KAM']);
   const [selectedFunction, setSelectedFunction] = useState('KAM');
   const [availableYears, setAvailableYears] = useState(['FY26']);
@@ -75,6 +76,7 @@ export function useKamData() {
         setData(processed);
         setLastUpdated(new Date());
         setIsLive(true);
+        setLoading(false);
         console.log(`✅ Loaded ${func}/${fy} data from backend API`);
       })
       .catch(() => {
@@ -87,6 +89,7 @@ export function useKamData() {
           console.log(`ℹ️  No data available for ${func}/${fy}`);
           setData(null);
         }
+        setLoading(false);
       });
   }, [processApiData, getFallbackData]);
 
@@ -227,6 +230,7 @@ export function useKamData() {
 
   return {
     data,
+    loading,
     isLive,
     lastUpdated,
     error,
