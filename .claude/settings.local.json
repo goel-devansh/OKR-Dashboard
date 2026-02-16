@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python3:*)",
+      "Bash(node --version:*)",
+      "Bash(npm:*)",
+      "Bash(node:*)",
+      "Bash(npx create-vite@latest kam-dashboard --template react)",
+      "Bash(\"/c/Users/DevanshGoel/OneDrive - Acidaes Solutions Pvt Ltd/Desktop/New folder/Code/kam-dashboard/src/index.css\" << 'CSSEOF'\n@import url\\('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap'\\);\n\n:root {\n  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;\n  line-height: 1.5;\n  font-weight: 400;\n  color: #1e293b;\n  background-color: #f8fafc;\n  font-synthesis: none;\n  text-rendering: optimizeLegibility;\n  -webkit-font-smoothing: antialiased;\n  -moz-osx-font-smoothing: grayscale;\n}\n\n* {\n  box-sizing: border-box;\n}\n\nbody {\n  margin: 0;\n  min-width: 320px;\n  min-height: 100vh;\n  background: #f8fafc;\n}\n\n#root {\n  width: 100%;\n}\n\nbutton {\n  font-family: inherit;\n  cursor: pointer;\n}\n\nselect {\n  font-family: inherit;\n}\nCSSEOF)",
+      "Bash(npx vite build)",
+      "Bash(curl:*)"
+    ]
+  }
+}
