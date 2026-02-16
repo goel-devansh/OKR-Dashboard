@@ -1023,11 +1023,12 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
    ================================================================ */
 function DashboardContent() {
   const {
-    isLive, lastUpdated,
+    isLive, lastUpdated, data,
     annualMetrics, monthlyBilling, monthlyCollection,
     quarterlyQBRs, quarterlyHeroStories,
     billingTotals, collectionTotals,
     weightages, quarterlyARR, quarterlyServiceRev,
+    availableFunctions, selectedFunction, changeFunction,
     availableYears, selectedFY, changeFY,
   } = useKamDataContext();
 
@@ -1035,6 +1036,12 @@ function DashboardContent() {
   const [showTakeaways, setShowTakeaways] = useState(false);
   const openDrill = useCallback((section) => setDrillSection(section), []);
   const closeDrill = useCallback(() => setDrillSection(null), []);
+
+  // Dynamic document title
+  React.useEffect(() => {
+    const fyPart = selectedFY ? ` ${selectedFY}` : '';
+    document.title = `BusinessNext — ${selectedFunction} OKR Dashboard${fyPart}`;
+  }, [selectedFunction, selectedFY]);
 
   /* ---------- Timeliness Score Calculation ---------- */
   const billingTimeliness = useMemo(() => computeTimelinessScore(monthlyBilling), [monthlyBilling]);
@@ -1112,15 +1119,24 @@ function DashboardContent() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
           <BusinessNextLogo />
-          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.3, color: '#e2e8f0' }}>KAM OKR Dashboard</span>
-          <span style={{ fontSize: 11, color: '#64748b', margin: '0 2px' }}>—</span>
-          <select value={selectedFY} onChange={e => changeFY(e.target.value)} style={{
+          <select value={selectedFunction} onChange={e => changeFunction(e.target.value)} style={{
             background: 'rgba(232,31,118,0.15)', color: '#E81F76', border: '1px solid rgba(232,31,118,0.3)',
-            borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+            borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 800, cursor: 'pointer',
             outline: 'none', letterSpacing: 0.5,
           }}>
-            {availableYears.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+            {availableFunctions.map(f => <option key={f} value={f}>{f}</option>)}
           </select>
+          <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: -0.3, color: '#e2e8f0' }}>OKR Dashboard</span>
+          {availableYears.length > 0 && <>
+            <span style={{ fontSize: 11, color: '#64748b', margin: '0 2px' }}>—</span>
+            <select value={selectedFY} onChange={e => changeFY(e.target.value)} style={{
+              background: 'rgba(232,31,118,0.15)', color: '#E81F76', border: '1px solid rgba(232,31,118,0.3)',
+              borderRadius: 6, padding: '3px 8px', fontSize: 12, fontWeight: 800, cursor: 'pointer',
+              outline: 'none', letterSpacing: 0.5,
+            }}>
+              {availableYears.map(fy => <option key={fy} value={fy}>{fy}</option>)}
+            </select>
+          </>}
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Key Takeaways Button */}
@@ -1153,7 +1169,39 @@ function DashboardContent() {
         </div>
       </header>
 
-      {/* ====== Main Body ====== */}
+      {/* ====== Function Placeholder for non-KAM functions ====== */}
+      {(selectedFunction !== 'KAM' || !data) && selectedFunction && (
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: 40, textAlign: 'center', gap: 16,
+        }}>
+          <div style={{ fontSize: 48, opacity: 0.3 }}>📊</div>
+          <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>
+            {selectedFunction} Dashboard
+          </h2>
+          {data ? (
+            <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, lineHeight: 1.6 }}>
+              <strong>{selectedFunction}</strong> dashboard is coming soon. Data file detected &mdash; metrics and visualizations will be added in a future update.
+            </p>
+          ) : (
+            <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, lineHeight: 1.6 }}>
+              No data available for <strong>{selectedFunction}</strong> yet. Place a <code style={{
+                background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: 12,
+              }}>{selectedFunction}_Dashboard_FY26.xlsx</code> file in the server folder to get started.
+            </p>
+          )}
+          <div style={{
+            marginTop: 8, padding: '10px 20px', borderRadius: 8,
+            background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
+            color: '#94a3b8', fontSize: 11, fontWeight: 600,
+          }}>
+            Generate a template: <code style={{ color: '#E81F76' }}>node generate-template.cjs {selectedFunction} FY26</code>
+          </div>
+        </div>
+      )}
+
+      {/* ====== Main Body (KAM full dashboard) ====== */}
+      {selectedFunction === 'KAM' && data && (
       <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: 8, gap: 8 }}>
 
         {/* ---- Left Column: OKR Gauge + All Metric Tiles ---- */}
@@ -1357,11 +1405,14 @@ function DashboardContent() {
           </MetricSummaryCard>
         </div>
       </div>
+      )}
 
       {/* ====== Modals ====== */}
-      <DrillDownModal section={drillSection} onClose={closeDrill}
-        billingTimelinessData={billingTimeliness} collectionTimelinessData={collectionTimeliness}
-        selectedFY={selectedFY} />
+      {selectedFunction === 'KAM' && data && (
+        <DrillDownModal section={drillSection} onClose={closeDrill}
+          billingTimelinessData={billingTimeliness} collectionTimelinessData={collectionTimeliness}
+          selectedFY={selectedFY} />
+      )}
       {showTakeaways && <KeyTakeawaysModal takeaways={takeaways} onClose={() => setShowTakeaways(false)} />}
     </div>
   );

@@ -1,0 +1,1 @@
+const fs=require("fs");const p=require("path");const dir=p.join(__dirname);const content=fs.readFileSync(p.join(dir,"__content.txt"),"utf8");fs.writeFileSync(p.join(dir,"server.cjs"),content,"utf8");console.log("Written",content.length,"bytes to server.cjs");fs.unlinkSync(p.join(dir,"__content.txt"));fs.unlinkSync(p.join(dir,"__writer.js"));console.log("Cleaned up temp files");

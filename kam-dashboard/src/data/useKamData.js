@@ -1,6 +1,6 @@
 // ============================================================
 // useKamData Hook — Fetches data from backend API + WebSocket
-// Supports multi-FY (Financial Year) selection
+// Supports multi-Function + multi-FY selection
 // Falls back to hardcoded data if server is not running
 // ============================================================
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -8,6 +8,7 @@ import * as fallbackData from './kamData.js';
 
 const API_URL = 'http://localhost:3001/api/data';
 const YEARS_URL = 'http://localhost:3001/api/years';
+const FUNCTIONS_URL = 'http://localhost:3001/api/functions';
 const WS_URL = 'ws://localhost:3001';
 
 export function useKamData() {
@@ -15,14 +16,18 @@ export function useKamData() {
   const [isLive, setIsLive] = useState(false);
   const [lastUpdated, setLastUpdated] = useState(null);
   const [error, setError] = useState(null);
+  const [availableFunctions, setAvailableFunctions] = useState(['KAM']);
+  const [selectedFunction, setSelectedFunction] = useState('KAM');
   const [availableYears, setAvailableYears] = useState(['FY26']);
   const [selectedFY, setSelectedFY] = useState('FY26');
   const wsRef = useRef(null);
   const reconnectTimerRef = useRef(null);
   const selectedFYRef = useRef(selectedFY);
+  const selectedFunctionRef = useRef(selectedFunction);
 
-  // Keep ref in sync
+  // Keep refs in sync
   useEffect(() => { selectedFYRef.current = selectedFY; }, [selectedFY]);
+  useEffect(() => { selectedFunctionRef.current = selectedFunction; }, [selectedFunction]);
 
   // Build the data shape from API response
   const processApiData = useCallback((apiData) => {
@@ -58,9 +63,9 @@ export function useKamData() {
     };
   }, []);
 
-  // Fetch data for a specific FY
-  const fetchFYData = useCallback((fy) => {
-    return fetch(`${API_URL}?fy=${fy}`)
+  // Fetch data for a specific function + FY
+  const fetchFYData = useCallback((func, fy) => {
+    return fetch(`${API_URL}?function=${func}&fy=${fy}`)
       .then(res => {
         if (!res.ok) throw new Error('API error');
         return res.json();
@@ -70,19 +75,46 @@ export function useKamData() {
         setData(processed);
         setLastUpdated(new Date());
         setIsLive(true);
-        console.log(`✅ Loaded ${fy} data from backend API`);
+        console.log(`✅ Loaded ${func}/${fy} data from backend API`);
       })
       .catch(() => {
-        if (fy === 'FY26') {
+        if (func === 'KAM' && fy === 'FY26') {
           console.log('ℹ️  Backend not running — using static data. Start server.cjs for live updates.');
           setData(getFallbackData());
           setLastUpdated(new Date());
           setIsLive(false);
         } else {
-          console.log(`ℹ️  No data available for ${fy}`);
+          console.log(`ℹ️  No data available for ${func}/${fy}`);
+          setData(null);
         }
       });
   }, [processApiData, getFallbackData]);
+
+  // Fetch years for a function, then load data for default year
+  const fetchYearsForFunction = useCallback((func) => {
+    return fetch(`${YEARS_URL}?function=${func}`)
+      .then(res => res.json())
+      .then(yearData => {
+        if (yearData.years && yearData.years.length > 0) {
+          setAvailableYears(yearData.years);
+          const fy = yearData.defaultYear || yearData.years[yearData.years.length - 1];
+          setSelectedFY(fy);
+          return fetchFYData(func, fy);
+        } else {
+          setAvailableYears([]);
+          setSelectedFY('');
+          setData(null);
+        }
+      })
+      .catch(() => {
+        // Server not running
+        if (func === 'KAM') {
+          setAvailableYears(['FY26']);
+          setSelectedFY('FY26');
+          return fetchFYData('KAM', 'FY26');
+        }
+      });
+  }, [fetchFYData]);
 
   // Connect to WebSocket for live updates
   const connectWebSocket = useCallback(() => {
@@ -91,7 +123,7 @@ export function useKamData() {
       wsRef.current = ws;
 
       ws.onopen = () => {
-        console.log('🔌 Connected to KAM Dashboard server (live updates active)');
+        console.log('🔌 Connected to Dashboard server (live updates active)');
         setIsLive(true);
         setError(null);
       };
@@ -100,24 +132,33 @@ export function useKamData() {
         try {
           const message = JSON.parse(event.data);
 
-          // Handle years list update
-          if (message.type === 'years' && message.years) {
-            setAvailableYears(message.years);
-            if (message.defaultYear && !selectedFYRef.current) {
-              setSelectedFY(message.defaultYear);
-            }
-            console.log('📅 Available FY years:', message.years);
+          // Handle functions list update
+          if (message.type === 'functions' && message.functions) {
+            setAvailableFunctions(message.functions);
+            console.log('📋 Available functions:', message.functions);
           }
 
-          // Handle data update
+          // Handle years list update — only for the currently selected function
+          if (message.type === 'years' && message.years) {
+            const msgFunc = (message.function || '').toUpperCase();
+            if (msgFunc === selectedFunctionRef.current) {
+              setAvailableYears(message.years);
+              if (message.defaultYear && !selectedFYRef.current) {
+                setSelectedFY(message.defaultYear);
+              }
+              console.log(`📅 Available FY years for ${msgFunc}:`, message.years);
+            }
+          }
+
+          // Handle data update — only for the currently selected function+FY
           if (message.type === 'data' && message.payload) {
-            const messageFY = message.fy || 'FY26';
-            // Only update if this is for the currently selected FY
-            if (messageFY === selectedFYRef.current) {
+            const msgFunc = (message.function || 'KAM').toUpperCase();
+            const msgFY = message.fy || 'FY26';
+            if (msgFunc === selectedFunctionRef.current && msgFY === selectedFYRef.current) {
               const processed = processApiData(message.payload);
               setData(processed);
               setLastUpdated(new Date());
-              console.log(`📊 Dashboard data updated from server (${messageFY})`);
+              console.log(`📊 Dashboard data updated from server (${msgFunc}/${msgFY})`);
             }
           }
         } catch (e) {
@@ -129,7 +170,6 @@ export function useKamData() {
         console.log('🔌 Disconnected from server');
         setIsLive(false);
         wsRef.current = null;
-        // Reconnect after 5 seconds
         reconnectTimerRef.current = setTimeout(() => {
           console.log('🔄 Attempting to reconnect...');
           connectWebSocket();
@@ -137,7 +177,6 @@ export function useKamData() {
       };
 
       ws.onerror = () => {
-        // Will trigger onclose
         ws.close();
       };
     } catch (e) {
@@ -147,40 +186,43 @@ export function useKamData() {
 
   // Initial fetch + WebSocket connection
   useEffect(() => {
-    // Fetch available years first, then data
-    fetch(YEARS_URL)
+    // Fetch available functions first
+    fetch(FUNCTIONS_URL)
       .then(res => res.json())
-      .then(yearData => {
-        if (yearData.years && yearData.years.length > 0) {
-          setAvailableYears(yearData.years);
-          const fy = yearData.defaultYear || yearData.years[yearData.years.length - 1];
-          setSelectedFY(fy);
-          return fetchFYData(fy);
+      .then(funcData => {
+        if (funcData.functions && funcData.functions.length > 0) {
+          setAvailableFunctions(funcData.functions);
+          const func = funcData.defaultFunction || funcData.functions[0];
+          setSelectedFunction(func);
+          return fetchYearsForFunction(func);
         }
       })
       .catch(() => {
         // Server not running — use fallback
-        fetchFYData('FY26');
+        setAvailableFunctions(['KAM']);
+        setSelectedFunction('KAM');
+        fetchFYData('KAM', 'FY26');
       })
       .finally(() => {
         connectWebSocket();
       });
 
-    // Cleanup
     return () => {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      if (reconnectTimerRef.current) {
-        clearTimeout(reconnectTimerRef.current);
-      }
+      if (wsRef.current) wsRef.current.close();
+      if (reconnectTimerRef.current) clearTimeout(reconnectTimerRef.current);
     };
-  }, [fetchFYData, connectWebSocket]);
+  }, [fetchFYData, fetchYearsForFunction, connectWebSocket]);
 
-  // Re-fetch when FY selection changes
+  // Change function — switches function, re-fetches years & data
+  const changeFunction = useCallback((func) => {
+    setSelectedFunction(func);
+    fetchYearsForFunction(func);
+  }, [fetchYearsForFunction]);
+
+  // Change FY — re-fetches data for current function
   const changeFY = useCallback((fy) => {
     setSelectedFY(fy);
-    fetchFYData(fy);
+    fetchFYData(selectedFunctionRef.current, fy);
   }, [fetchFYData]);
 
   return {
@@ -188,6 +230,9 @@ export function useKamData() {
     isLive,
     lastUpdated,
     error,
+    availableFunctions,
+    selectedFunction,
+    changeFunction,
     availableYears,
     selectedFY,
     changeFY,

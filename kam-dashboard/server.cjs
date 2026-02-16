@@ -1,7 +1,7 @@
 // ============================================================
-// KAM Dashboard Backend Server (Multi-FY Support)
+// KAM Dashboard Backend Server (Multi-Function + Multi-FY)
 // Reads Excel files → Serves JSON API → Watches for changes
-// Supports: KAM_Dashboard_FY*.xlsx and KAM_Dashboard_Input.xlsx
+// Supports: {Function}_Dashboard_FY*.xlsx (e.g. KAM_Dashboard_FY26.xlsx, Sales_Dashboard_FY27.xlsx)
 // Run: node server.cjs
 // ============================================================
 const express = require('express');
@@ -16,63 +16,81 @@ const app = express();
 const PORT = 3001;
 const PROJECT_DIR = __dirname;
 
-// Pattern for multi-FY files: KAM_Dashboard_FY*.xlsx
-const FY_FILE_PATTERN = /^KAM_Dashboard_FY(\d+)\.xlsx$/i;
-// Fallback single file (treated as FY26)
+// Pattern for multi-function, multi-FY files: {Function}_Dashboard_FY{NN}.xlsx
+const FUNC_FILE_PATTERN = /^(\w+)_Dashboard_FY(\d+)\.xlsx$/i;
+// Legacy fallback (treated as KAM + FY26)
 const FALLBACK_FILE = 'KAM_Dashboard_Input.xlsx';
+const FALLBACK_FUNC = 'KAM';
 const FALLBACK_FY = 'FY26';
 
 app.use(cors());
 app.use(express.json());
 
-// ─── Multi-FY Data Store ────────────────────────────────────
-// { FY26: {...data...}, FY27: {...data...} }
-let cachedDataByFY = {};
-let defaultYear = null;
+// ─── Multi-Function + Multi-FY Data Store ────────────────────
+// { KAM: { FY26: {...data...}, FY27: {...} }, SALES: { FY26: {...} } }
+let cachedData = {};
+let defaultFunction = null;
 
-// ─── Discover all FY Excel files ────────────────────────────
-function discoverFYFiles() {
+// ─── Discover all function + FY Excel files ──────────────────
+// Returns: { KAM: { FY26: '/path/to/file', FY27: '...' }, SALES: { FY26: '...' } }
+function discoverAllFiles() {
   const files = {};
 
-  // Scan for KAM_Dashboard_FY*.xlsx files
   const allFiles = fs.readdirSync(PROJECT_DIR);
   for (const filename of allFiles) {
-    const match = filename.match(FY_FILE_PATTERN);
+    const match = filename.match(FUNC_FILE_PATTERN);
     if (match) {
-      const fyNum = match[1];
-      const fyKey = `FY${fyNum}`;
-      files[fyKey] = path.join(PROJECT_DIR, filename);
+      const funcName = match[1].toUpperCase();
+      const fyKey = `FY${match[2]}`;
+      if (!files[funcName]) files[funcName] = {};
+      files[funcName][fyKey] = path.join(PROJECT_DIR, filename);
     }
   }
 
-  // Fallback: if no FY files found, use KAM_Dashboard_Input.xlsx as FY26
-  if (Object.keys(files).length === 0) {
+  // Fallback: if no files found at all, check for KAM_Dashboard_Input.xlsx
+  const totalFiles = Object.values(files).reduce((s, obj) => s + Object.keys(obj).length, 0);
+  if (totalFiles === 0) {
     const fallbackPath = path.join(PROJECT_DIR, FALLBACK_FILE);
     if (fs.existsSync(fallbackPath)) {
-      files[FALLBACK_FY] = fallbackPath;
+      files[FALLBACK_FUNC] = { [FALLBACK_FY]: fallbackPath };
     }
   }
 
   return files;
 }
 
-// ─── Determine the FY key from a file path ──────────────────
-function getFYFromFilePath(filePath) {
+// ─── Parse function + FY from a file path ────────────────────
+function parseFuncAndFY(filePath) {
   const filename = path.basename(filePath);
-  const match = filename.match(FY_FILE_PATTERN);
+  const match = filename.match(FUNC_FILE_PATTERN);
   if (match) {
-    return `FY${match[1]}`;
+    return { func: match[1].toUpperCase(), fy: `FY${match[2]}` };
   }
   if (filename.toLowerCase() === FALLBACK_FILE.toLowerCase()) {
-    return FALLBACK_FY;
+    return { func: FALLBACK_FUNC, fy: FALLBACK_FY };
   }
   return null;
 }
 
-// ─── Get the default (latest) FY year ───────────────────────
+// ─── Get sorted list of available functions ──────────────────
+function getAvailableFunctions() {
+  const funcs = Object.keys(cachedData).filter(f => {
+    // Only include functions that have at least one non-null FY data
+    const fyData = cachedData[f];
+    return fyData && Object.values(fyData).some(d => d !== null);
+  });
+  // Sort: KAM first, then alphabetically
+  funcs.sort((a, b) => {
+    if (a === 'KAM') return -1;
+    if (b === 'KAM') return 1;
+    return a.localeCompare(b);
+  });
+  return funcs;
+}
+
+// ─── Get the default (latest) FY year for a function ─────────
 function computeDefaultYear(years) {
   if (!years || years.length === 0) return null;
-  // Sort numerically descending by the number portion, pick the latest
   const sorted = [...years].sort((a, b) => {
     const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
     const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
@@ -81,10 +99,11 @@ function computeDefaultYear(years) {
   return sorted[0];
 }
 
-// ─── Get sorted list of available years ─────────────────────
-function getAvailableYears() {
-  const years = Object.keys(cachedDataByFY).filter(fy => cachedDataByFY[fy] !== null);
-  // Sort ascending by number
+// ─── Get sorted list of available years for a function ───────
+function getAvailableYears(funcName) {
+  const funcData = cachedData[funcName];
+  if (!funcData) return [];
+  const years = Object.keys(funcData).filter(fy => funcData[fy] !== null);
   years.sort((a, b) => {
     const numA = parseInt(a.replace(/\D/g, ''), 10) || 0;
     const numB = parseInt(b.replace(/\D/g, ''), 10) || 0;
@@ -109,7 +128,6 @@ function parseExcelData(filePath) {
     if (annualSheet) {
       const rows = XLSX.utils.sheet_to_json(annualSheet, { header: 1, defval: '' });
       const metricRows = rows.slice(2); // skip title + blank row
-      const header = metricRows[0]; // Metric, Target FY26, Achievement Till Date
 
       data.annualMetrics = {};
       const metricKeyMap = {
@@ -305,81 +323,108 @@ function parseNum(val) {
   return isNaN(n) ? 0 : n;
 }
 
-// ─── Initial Load: Parse all FY files ────────────────────────
-function loadAllFYData() {
-  const fyFiles = discoverFYFiles();
-  cachedDataByFY = {};
+// ─── Initial Load: Parse all function+FY files ───────────────
+function loadAllData() {
+  const allFiles = discoverAllFiles();
+  cachedData = {};
 
-  for (const [fyKey, filePath] of Object.entries(fyFiles)) {
-    const data = parseExcelData(filePath);
-    if (data) {
-      cachedDataByFY[fyKey] = data;
-    }
-  }
-
-  const years = getAvailableYears();
-  defaultYear = computeDefaultYear(years);
-
-  if (years.length > 0) {
-    console.log(`Loaded FY data: ${years.join(', ')} (default: ${defaultYear})`);
-  } else {
-    console.log('No FY data files found.');
-  }
-}
-
-loadAllFYData();
-
-// ─── API Routes ──────────────────────────────────────────────
-
-// GET /api/years - list available financial years
-app.get('/api/years', (req, res) => {
-  const years = getAvailableYears();
-  res.json({
-    years,
-    defaultYear: defaultYear || null,
-  });
-});
-
-// GET /api/data?fy=FY26 - get data for a specific FY (or default)
-app.get('/api/data', (req, res) => {
-  const requestedFY = req.query.fy || defaultYear;
-
-  if (!requestedFY) {
-    return res.status(500).json({ error: 'No FY data available' });
-  }
-
-  // If the requested FY is not cached, try to reload
-  if (!cachedDataByFY[requestedFY]) {
-    // Attempt a fresh scan and parse
-    const fyFiles = discoverFYFiles();
-    if (fyFiles[requestedFY]) {
-      const data = parseExcelData(fyFiles[requestedFY]);
+  for (const [funcName, fyFiles] of Object.entries(allFiles)) {
+    if (!cachedData[funcName]) cachedData[funcName] = {};
+    for (const [fyKey, filePath] of Object.entries(fyFiles)) {
+      const data = parseExcelData(filePath);
       if (data) {
-        cachedDataByFY[requestedFY] = data;
-        const years = getAvailableYears();
-        defaultYear = computeDefaultYear(years);
+        cachedData[funcName][fyKey] = data;
       }
     }
   }
 
-  const data = cachedDataByFY[requestedFY];
+  const funcs = getAvailableFunctions();
+  defaultFunction = funcs.length > 0 ? funcs[0] : null;
+
+  if (funcs.length > 0) {
+    for (const f of funcs) {
+      const years = getAvailableYears(f);
+      console.log(`  ${f}: ${years.join(', ')}`);
+    }
+  } else {
+    console.log('No data files found.');
+  }
+}
+
+loadAllData();
+
+// ─── API Routes ──────────────────────────────────────────────
+
+// GET /api/functions - list available business functions
+app.get('/api/functions', (req, res) => {
+  const funcs = getAvailableFunctions();
+  res.json({
+    functions: funcs,
+    defaultFunction: defaultFunction || null,
+  });
+});
+
+// GET /api/years?function=KAM - list available FYs for a function
+app.get('/api/years', (req, res) => {
+  const funcName = (req.query.function || defaultFunction || '').toUpperCase();
+  const years = getAvailableYears(funcName);
+  const defYear = computeDefaultYear(years);
+  res.json({
+    function: funcName,
+    years,
+    defaultYear: defYear,
+  });
+});
+
+// GET /api/data?function=KAM&fy=FY26 - get data for function+FY
+app.get('/api/data', (req, res) => {
+  const funcName = (req.query.function || defaultFunction || '').toUpperCase();
+  const years = getAvailableYears(funcName);
+  const requestedFY = req.query.fy || computeDefaultYear(years);
+
+  if (!funcName) {
+    return res.status(500).json({ error: 'No function data available' });
+  }
+
+  if (!requestedFY) {
+    return res.status(500).json({ error: `No FY data available for ${funcName}` });
+  }
+
+  // If not cached, try to reload
+  if (!cachedData[funcName] || !cachedData[funcName][requestedFY]) {
+    const allFiles = discoverAllFiles();
+    if (allFiles[funcName] && allFiles[funcName][requestedFY]) {
+      const data = parseExcelData(allFiles[funcName][requestedFY]);
+      if (data) {
+        if (!cachedData[funcName]) cachedData[funcName] = {};
+        cachedData[funcName][requestedFY] = data;
+      }
+    }
+  }
+
+  const data = cachedData[funcName] && cachedData[funcName][requestedFY];
   if (!data) {
-    return res.status(404).json({ error: `No data found for ${requestedFY}` });
+    return res.status(404).json({ error: `No data found for ${funcName} ${requestedFY}` });
   }
 
   res.json(data);
 });
 
 app.get('/api/health', (req, res) => {
-  const fyFiles = discoverFYFiles();
-  const years = getAvailableYears();
+  const funcs = getAvailableFunctions();
+  const allFiles = discoverAllFiles();
+  const details = {};
+  for (const [func, fyFiles] of Object.entries(allFiles)) {
+    details[func] = {};
+    for (const [fy, fp] of Object.entries(fyFiles)) {
+      details[func][fy] = path.basename(fp);
+    }
+  }
   res.json({
     status: 'ok',
-    availableYears: years,
-    defaultYear: defaultYear,
-    fyFiles: Object.fromEntries(
-      Object.entries(fyFiles).map(([fy, fp]) => [fy, path.basename(fp)])
-    ),
+    availableFunctions: funcs,
+    defaultFunction,
+    details,
     lastParsed: new Date().toISOString(),
   });
 });
@@ -394,21 +439,34 @@ wss.on('connection', (ws) => {
   clients.add(ws);
   console.log(`Dashboard client connected (total: ${clients.size})`);
 
-  // Send available years immediately
-  const years = getAvailableYears();
+  // Send available functions immediately
+  const funcs = getAvailableFunctions();
   ws.send(JSON.stringify({
-    type: 'years',
-    years,
-    defaultYear: defaultYear,
+    type: 'functions',
+    functions: funcs,
+    defaultFunction: defaultFunction,
   }));
 
-  // Send default year's data immediately
-  if (defaultYear && cachedDataByFY[defaultYear]) {
+  // Send years for default function
+  if (defaultFunction) {
+    const years = getAvailableYears(defaultFunction);
+    const defYear = computeDefaultYear(years);
     ws.send(JSON.stringify({
-      type: 'data',
-      fy: defaultYear,
-      payload: cachedDataByFY[defaultYear],
+      type: 'years',
+      function: defaultFunction,
+      years,
+      defaultYear: defYear,
     }));
+
+    // Send default data
+    if (defYear && cachedData[defaultFunction] && cachedData[defaultFunction][defYear]) {
+      ws.send(JSON.stringify({
+        type: 'data',
+        function: defaultFunction,
+        fy: defYear,
+        payload: cachedData[defaultFunction][defYear],
+      }));
+    }
   }
 
   ws.on('close', () => {
@@ -417,35 +475,46 @@ wss.on('connection', (ws) => {
   });
 });
 
-function broadcastYears() {
-  const years = getAvailableYears();
+function broadcastFunctions() {
+  const funcs = getAvailableFunctions();
   const message = JSON.stringify({
-    type: 'years',
-    years,
-    defaultYear: defaultYear,
+    type: 'functions',
+    functions: funcs,
+    defaultFunction: defaultFunction,
   });
   for (const ws of clients) {
-    if (ws.readyState === 1) { // OPEN
-      ws.send(message);
-    }
+    if (ws.readyState === 1) ws.send(message);
   }
 }
 
-function broadcastFYUpdate(fyKey) {
-  const data = cachedDataByFY[fyKey];
+function broadcastYears(funcName) {
+  const years = getAvailableYears(funcName);
+  const defYear = computeDefaultYear(years);
+  const message = JSON.stringify({
+    type: 'years',
+    function: funcName,
+    years,
+    defaultYear: defYear,
+  });
+  for (const ws of clients) {
+    if (ws.readyState === 1) ws.send(message);
+  }
+}
+
+function broadcastFYUpdate(funcName, fyKey) {
+  const data = cachedData[funcName] && cachedData[funcName][fyKey];
   if (!data) return;
 
   const message = JSON.stringify({
     type: 'data',
+    function: funcName,
     fy: fyKey,
     payload: data,
   });
   for (const ws of clients) {
-    if (ws.readyState === 1) { // OPEN
-      ws.send(message);
-    }
+    if (ws.readyState === 1) ws.send(message);
   }
-  console.log(`Broadcasted ${fyKey} update to ${clients.size} client(s)`);
+  console.log(`Broadcasted ${funcName}/${fyKey} update to ${clients.size} client(s)`);
 }
 
 // ─── File Watcher ────────────────────────────────────────────
@@ -453,84 +522,92 @@ const debounceTimers = {};
 const activeWatchers = new Map(); // filePath -> fs.FSWatcher
 
 function watchFile(filePath) {
-  if (activeWatchers.has(filePath)) return; // already watching
-
+  if (activeWatchers.has(filePath)) return;
   if (!fs.existsSync(filePath)) return;
 
-  const fyKey = getFYFromFilePath(filePath);
-  if (!fyKey) return;
+  const parsed = parseFuncAndFY(filePath);
+  if (!parsed) return;
 
-  console.log(`Watching: ${path.basename(filePath)} (${fyKey})`);
+  const { func, fy } = parsed;
+  console.log(`Watching: ${path.basename(filePath)} (${func}/${fy})`);
 
   const watcher = fs.watch(filePath, { persistent: true }, (eventType) => {
     if (eventType === 'change' || eventType === 'rename') {
-      // Debounce per file: Excel saves can trigger multiple events
       if (debounceTimers[filePath]) clearTimeout(debounceTimers[filePath]);
       debounceTimers[filePath] = setTimeout(() => {
         console.log(`\nExcel file changed: ${path.basename(filePath)} - Reloading...`);
 
-        // Check if file still exists (might have been deleted)
         if (!fs.existsSync(filePath)) {
           console.log(`File removed: ${path.basename(filePath)}`);
-          delete cachedDataByFY[fyKey];
-          const years = getAvailableYears();
-          defaultYear = computeDefaultYear(years);
-          broadcastYears();
-          // Stop watching this file
-          const w = activeWatchers.get(filePath);
-          if (w) {
-            w.close();
-            activeWatchers.delete(filePath);
+          if (cachedData[func]) {
+            delete cachedData[func][fy];
+            // If no FYs left for this function, remove the function
+            if (Object.keys(cachedData[func]).length === 0) {
+              delete cachedData[func];
+              defaultFunction = getAvailableFunctions()[0] || null;
+              broadcastFunctions();
+            }
           }
+          broadcastYears(func);
+          const w = activeWatchers.get(filePath);
+          if (w) { w.close(); activeWatchers.delete(filePath); }
           return;
         }
 
         const newData = parseExcelData(filePath);
         if (newData) {
-          cachedDataByFY[fyKey] = newData;
-          const years = getAvailableYears();
-          const newDefault = computeDefaultYear(years);
-          if (newDefault !== defaultYear) {
-            defaultYear = newDefault;
-            broadcastYears();
-          }
-          broadcastFYUpdate(fyKey);
+          if (!cachedData[func]) cachedData[func] = {};
+          cachedData[func][fy] = newData;
+          broadcastFYUpdate(func, fy);
+          broadcastYears(func);
         }
-      }, 1500); // Wait 1.5s for Excel to finish writing
+      }, 1500);
     }
   });
 
   activeWatchers.set(filePath, watcher);
 }
 
-function watchAllFYFiles() {
-  const fyFiles = discoverFYFiles();
-  for (const [fyKey, filePath] of Object.entries(fyFiles)) {
-    watchFile(filePath);
+function watchAllFiles() {
+  const allFiles = discoverAllFiles();
+  for (const [funcName, fyFiles] of Object.entries(allFiles)) {
+    for (const [fyKey, filePath] of Object.entries(fyFiles)) {
+      watchFile(filePath);
+    }
   }
 
-  // Also watch the project directory for new FY files being added
+  // Watch the project directory for new files being added
   fs.watch(PROJECT_DIR, { persistent: true }, (eventType, filename) => {
     if (!filename) return;
 
-    // Check if a new FY file was added
-    const match = filename.match(FY_FILE_PATTERN);
+    const match = filename.match(FUNC_FILE_PATTERN);
     const isFallback = filename.toLowerCase() === FALLBACK_FILE.toLowerCase();
 
     if (match || isFallback) {
       const fullPath = path.join(PROJECT_DIR, filename);
-      const fyKey = getFYFromFilePath(fullPath);
+      const parsed = parseFuncAndFY(fullPath);
 
-      if (fyKey && fs.existsSync(fullPath) && !activeWatchers.has(fullPath)) {
-        // New FY file detected - parse and start watching
-        console.log(`\nNew FY file detected: ${filename}`);
+      if (parsed && fs.existsSync(fullPath) && !activeWatchers.has(fullPath)) {
+        const { func, fy } = parsed;
+        console.log(`\nNew file detected: ${filename} (${func}/${fy})`);
+
+        const prevFuncs = getAvailableFunctions();
+
         const data = parseExcelData(fullPath);
         if (data) {
-          cachedDataByFY[fyKey] = data;
-          const years = getAvailableYears();
-          defaultYear = computeDefaultYear(years);
-          broadcastYears();
-          broadcastFYUpdate(fyKey);
+          if (!cachedData[func]) cachedData[func] = {};
+          cachedData[func][fy] = data;
+
+          const newFuncs = getAvailableFunctions();
+          if (!defaultFunction) defaultFunction = newFuncs[0] || null;
+
+          // If a new function appeared, broadcast the updated functions list
+          if (newFuncs.length !== prevFuncs.length || newFuncs.some((f, i) => f !== prevFuncs[i])) {
+            broadcastFunctions();
+          }
+
+          broadcastYears(func);
+          broadcastFYUpdate(func, fy);
           watchFile(fullPath);
         }
       }
@@ -540,28 +617,31 @@ function watchAllFYFiles() {
 
 // ─── Start Server ────────────────────────────────────────────
 server.listen(PORT, () => {
-  const years = getAvailableYears();
-  const fyFiles = discoverFYFiles();
+  const funcs = getAvailableFunctions();
+  const allFiles = discoverAllFiles();
 
   console.log('');
   console.log('========================================================');
-  console.log('         KAM Dashboard Backend Server (Multi-FY)        ');
+  console.log('    Dashboard Backend Server (Multi-Function + Multi-FY) ');
   console.log('========================================================');
-  console.log(`  API:        http://localhost:${PORT}/api/data?fy=FY26`);
-  console.log(`  Years API:  http://localhost:${PORT}/api/years`);
+  console.log(`  API:        http://localhost:${PORT}/api/data?function=KAM&fy=FY26`);
+  console.log(`  Functions:  http://localhost:${PORT}/api/functions`);
+  console.log(`  Years API:  http://localhost:${PORT}/api/years?function=KAM`);
   console.log(`  WebSocket:  ws://localhost:${PORT}`);
   console.log(`  Health:     http://localhost:${PORT}/api/health`);
   console.log('--------------------------------------------------------');
-  if (years.length > 0) {
-    console.log(`  Available FYs: ${years.join(', ')}`);
-    console.log(`  Default FY:    ${defaultYear}`);
+  if (funcs.length > 0) {
+    console.log(`  Functions:     ${funcs.join(', ')}`);
+    console.log(`  Default:       ${defaultFunction}`);
     console.log('  Files:');
-    for (const [fy, fp] of Object.entries(fyFiles)) {
-      console.log(`    ${fy} -> ${path.basename(fp)}`);
+    for (const [func, fyFiles] of Object.entries(allFiles)) {
+      for (const [fy, fp] of Object.entries(fyFiles)) {
+        console.log(`    ${func}/${fy} -> ${path.basename(fp)}`);
+      }
     }
   } else {
-    console.log('  No FY data files found.');
-    console.log(`  Place KAM_Dashboard_FY26.xlsx (or KAM_Dashboard_Input.xlsx)`);
+    console.log('  No data files found.');
+    console.log(`  Place KAM_Dashboard_FY26.xlsx (or any {Function}_Dashboard_FY{NN}.xlsx)`);
     console.log(`  in: ${PROJECT_DIR}`);
   }
   console.log('--------------------------------------------------------');
@@ -570,5 +650,5 @@ server.listen(PORT, () => {
   console.log('========================================================');
   console.log('');
 
-  watchAllFYFiles();
+  watchAllFiles();
 });

@@ -16,7 +16,9 @@
       "Bash(ping:*)",
       "Bash(npx vite:*)",
       "Bash(dir:*)",
-      "Bash(copy:*)"
+      "Bash(copy:*)",
+      "Bash(where:*)",
+      "Bash(ls:*)"
     ]
   }
 }
