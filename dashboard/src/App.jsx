@@ -657,7 +657,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
                 return (
                   <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
                     <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{(weight * 100).toFixed(0)}%</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
                     <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
                     <td style={{ padding: '10px 14px', textAlign: 'center' }}>
@@ -666,7 +666,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
                         background: `${achColor}18`, color: achColor, fontWeight: 700, fontSize: 12,
                       }}>{achPctVal.toFixed(0)}%</span>
                     </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{(weightedScore * 100).toFixed(1)}%</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
                   </tr>
                 );
               })}
@@ -674,11 +674,11 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
             <tfoot>
               <tr style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: '#fff' }}>
                 <td style={{ padding: '12px 14px', fontWeight: 800, fontSize: 14, borderRadius: '0 0 0 8px' }}>Overall OKR Score</td>
-                <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 700 }}>{(totalWeight * 100).toFixed(0)}%</td>
+                <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 700 }}>{totalWeight.toFixed(0)}%</td>
                 <td style={{ padding: '12px 14px' }}></td>
                 <td style={{ padding: '12px 14px' }}></td>
                 <td style={{ padding: '12px 14px' }}></td>
-                <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 800, fontSize: 18, color: '#E81F76', borderRadius: '0 0 8px 0' }}>{(okrScore * 100).toFixed(1)}%</td>
+                <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 800, fontSize: 18, color: '#E81F76', borderRadius: '0 0 8px 0' }}>{okrScore.toFixed(1)}%</td>
               </tr>
             </tfoot>
           </table>

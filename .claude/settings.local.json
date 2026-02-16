@@ -25,7 +25,8 @@
       "Bash(powershell -File - <<'PSEOF'\nGet-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\nStart-Sleep -Seconds 3\ntry {\n    Rename-Item -Path \"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\kam-dashboard\" -NewName \"dashboard\" -Force -ErrorAction Stop\n    Write-Host \"SUCCESS: Folder renamed\"\n} catch {\n    Write-Host \"FAILED: $\\($_.Exception.Message\\)\"\n}\nPSEOF)",
       "Bash(cmd /c \"ren \"\"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\kam-dashboard\"\" dashboard\")",
       "Bash(cmd /c:*)",
-      "Bash(powershell -File -:*)"
+      "Bash(powershell -File -:*)",
+      "Bash(python:*)"
     ]
   }
 }
