@@ -4,9 +4,10 @@
 // ============================================================
 
 // Annual KPI Metrics
+// ARR and Service Rev are computed from quarterly breakdowns below
 export const annualMetrics = {
-  arr: { label: 'ARR INR Cr', targetFY26: 57.4, achievementTillDate: 19.03, unit: 'Cr' },
-  serviceRev: { label: 'Service Rev INR Cr', targetFY26: 131, achievementTillDate: 121, unit: 'Cr' },
+  arr: { label: 'ARR INR Cr', targetFY26: 14.35*4, achievementTillDate: 5.2+6.8+4.53+2.5, unit: 'Cr' },
+  serviceRev: { label: 'Service Rev INR Cr', targetFY26: 32.75*4, achievementTillDate: 30.5+31.2+35.8+23.5, unit: 'Cr' },
   ndr: { label: 'NDR', targetFY26: 1.20, achievementTillDate: 1.15, unit: 'x' },
   gdr: { label: 'GDR', targetFY26: 0.95, achievementTillDate: 0.88, unit: 'x' },
   nps: { label: 'NPS Score', targetFY26: 30, achievementTillDate: -11, unit: '' },

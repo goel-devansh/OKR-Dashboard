@@ -516,7 +516,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const qData = quarterlyARR || [];
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{formatCrore(m.targetFY26, 1)}</div>
@@ -559,7 +559,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const qData = quarterlyServiceRev || [];
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{formatCrore(m.targetFY26, 0)}</div>
@@ -604,7 +604,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const tarPct = (m.targetFY26 * 100).toFixed(0);
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 20, textAlign: 'center' }}>
               <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Target NDR</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b' }}>{tarPct}%</div>
@@ -633,7 +633,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const tarPct = (m.targetFY26 * 100).toFixed(0);
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 20, textAlign: 'center' }}>
               <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Target GDR</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b' }}>{tarPct}%</div>
@@ -659,7 +659,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const m = annualMetrics.nps;
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 20, textAlign: 'center' }}>
               <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Target NPS</div>
               <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b' }}>{m.targetFY26}</div>
@@ -875,7 +875,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       }));
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{qbrTotalTar}</div>
@@ -939,7 +939,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       }));
       return (
         <div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
               <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{heroTotalTar}</div>
@@ -999,7 +999,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999, animation: 'fadeIn 0.2s ease',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div className="drill-modal-content" onClick={e => e.stopPropagation()} style={{
         background: '#fff', borderRadius: 16, padding: 28,
         width: '92vw', maxWidth: 1100, maxHeight: '90vh', overflowY: 'auto',
         position: 'relative', animation: 'slideUp 0.3s ease',
@@ -1106,19 +1106,19 @@ function DashboardContent() {
 
   /* ---------- Render ---------- */
   return (
-    <div style={{
+    <div className="dashboard-shell" style={{
       height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
       background: '#f8fafc', fontFamily: "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
     }}>
 
       {/* ====== Header Bar ====== */}
-      <header style={{
+      <header className="dashboard-header" style={{
         height: 46, minHeight: 46, display: 'flex', alignItems: 'center', justifyContent: 'space-between',
         padding: '0 20px', background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)',
         color: '#fff', flexShrink: 0,
       }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <BusinessNextLogo />
+        <div className="header-left" style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <span className="bn-logo"><BusinessNextLogo /></span>
           <select value={selectedFunction} onChange={e => changeFunction(e.target.value)} style={{
             background: 'rgba(232,31,118,0.15)', color: '#E81F76', border: '1px solid rgba(232,31,118,0.3)',
             borderRadius: 6, padding: '3px 8px', fontSize: 13, fontWeight: 800, cursor: 'pointer',
@@ -1138,7 +1138,7 @@ function DashboardContent() {
             </select>
           </>}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Key Takeaways Button */}
           <button onClick={() => setShowTakeaways(true)} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
@@ -1164,7 +1164,7 @@ function DashboardContent() {
             }} />
             {isLive ? 'LIVE' : 'STATIC'}
           </span>
-          {lastUpdated && <span style={{ fontSize: 10, color: '#94a3b8' }}>{lastUpdated.toLocaleTimeString()}</span>}
+          {lastUpdated && <span className="header-timestamp" style={{ fontSize: 10, color: '#94a3b8' }}>{lastUpdated.toLocaleTimeString()}</span>}
           <span style={{ fontSize: 9, fontWeight: 600, background: 'rgba(232,31,118,0.15)', color: '#E81F76', padding: '2px 8px', borderRadius: 6 }}>INR Cr</span>
         </div>
       </header>
@@ -1202,22 +1202,22 @@ function DashboardContent() {
 
       {/* ====== Main Body (KAM full dashboard) ====== */}
       {selectedFunction === 'KAM' && data && (
-      <div style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: 8, gap: 8 }}>
+      <div className="dashboard-body" style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: 8, gap: 8 }}>
 
         {/* ---- Left Column: OKR Gauge + All Metric Tiles ---- */}
-        <div style={{
+        <div className="dashboard-sidebar" style={{
           width: '24%', minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6,
           background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
           borderRadius: 12, padding: 10, overflow: 'hidden',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
+          <div className="okr-gauge-wrap" style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
             <OKRScoreGauge score={okrScore} size={140} />
           </div>
-          <div style={{
+          <div className="okr-label" style={{
             textAlign: 'center', fontSize: 10, fontWeight: 700,
             color: '#E81F76', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
           }}>Cumulative OKR Score</div>
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', paddingRight: 3 }}>
+          <div className="metric-tiles-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', paddingRight: 3 }}>
             {metricTiles.map(tile => (
               <MetricTile key={tile.key} label={tile.label} achievement={tile.achievement}
                 weight={tile.weight} onClick={() => openDrill(tile.drill)} />
@@ -1226,7 +1226,7 @@ function DashboardContent() {
         </div>
 
         {/* ---- Right Area: 3x3 grid showing ALL metrics at a glance ---- */}
-        <div style={{
+        <div className="dashboard-metrics-grid" style={{
           flex: 1, display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
           gridTemplateRows: 'repeat(3, 1fr)',

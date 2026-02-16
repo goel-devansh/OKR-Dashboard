@@ -414,3 +414,202 @@
   .kpi-grid { grid-template-columns: 1fr; }
   .chart-header { flex-direction: column; }
 }
+
+/* ════════════════════════════════════════════════════════════
+   MOBILE RESPONSIVE — Dashboard Main Layout
+   ════════════════════════════════════════════════════════════ */
+
+/* ─── Tablet: ≤ 1024px ─────────────────────────────────────── */
+@media (max-width: 1024px) {
+  /* Switch to scrollable layout */
+  .dashboard-shell {
+    height: auto !important;
+    overflow: auto !important;
+    min-height: 100vh;
+  }
+
+  /* Stack body vertically */
+  .dashboard-body {
+    flex-direction: column !important;
+    overflow: visible !important;
+    padding: 6px !important;
+    gap: 6px !important;
+  }
+
+  /* Sidebar becomes horizontal strip */
+  .dashboard-sidebar {
+    width: 100% !important;
+    min-width: 0 !important;
+    flex-direction: row !important;
+    padding: 10px !important;
+    border-radius: 10px !important;
+    overflow: visible !important;
+    gap: 10px !important;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .dashboard-sidebar .okr-gauge-wrap {
+    flex-shrink: 0;
+  }
+
+  .dashboard-sidebar .okr-label {
+    display: none;
+  }
+
+  .dashboard-sidebar .metric-tiles-scroll {
+    flex: 1;
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap;
+    gap: 4px !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+    min-width: 0;
+  }
+
+  .dashboard-sidebar .metric-tiles-scroll > div {
+    flex: 1 1 calc(33.3% - 4px);
+    min-width: 120px;
+  }
+
+  /* Metric grid: 3 columns */
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    grid-template-rows: auto !important;
+    overflow: visible !important;
+    gap: 6px !important;
+  }
+
+  /* Header adjustments */
+  .dashboard-header {
+    height: auto !important;
+    min-height: 46px !important;
+    padding: 6px 12px !important;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .header-left {
+    gap: 8px !important;
+  }
+
+  .header-right {
+    gap: 6px !important;
+  }
+}
+
+/* ─── Mobile: ≤ 768px ──────────────────────────────────────── */
+@media (max-width: 768px) {
+  /* OKR Gauge shrinks */
+  .dashboard-sidebar .okr-gauge-wrap svg {
+    width: 100px;
+    height: 100px;
+  }
+
+  /* Metric tiles: 2 per row */
+  .dashboard-sidebar .metric-tiles-scroll > div {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 100px;
+  }
+
+  /* Metric cards: 2 columns */
+  .dashboard-metrics-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+
+  /* MetricSummaryCard inner chart area */
+  .dashboard-metrics-grid > div {
+    min-height: 140px;
+  }
+
+  /* Modal adjustments */
+  .drill-modal-content {
+    padding: 16px !important;
+    width: 96vw !important;
+    max-height: 92vh !important;
+  }
+
+  .drill-modal-content h3 {
+    font-size: 17px !important;
+  }
+
+  /* Drill-down stat grids stack to 1 column */
+  .drill-stat-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  /* Header: two rows */
+  .dashboard-header {
+    flex-direction: column !important;
+    align-items: stretch !important;
+    padding: 8px 10px !important;
+  }
+
+  .header-left {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .header-right {
+    justify-content: center;
+    flex-wrap: wrap;
+  }
+
+  .header-left .bn-logo svg {
+    height: 22px !important;
+  }
+}
+
+/* ─── Small phone: ≤ 480px ─────────────────────────────────── */
+@media (max-width: 480px) {
+  /* Sidebar becomes fully stacked */
+  .dashboard-sidebar {
+    flex-direction: column !important;
+    padding: 8px !important;
+  }
+
+  /* Metric tiles: still 2 per row */
+  .dashboard-sidebar .metric-tiles-scroll > div {
+    flex: 1 1 calc(50% - 4px);
+    min-width: 80px;
+  }
+
+  /* Metric cards: single column */
+  .dashboard-metrics-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .dashboard-metrics-grid > div {
+    min-height: 160px;
+  }
+
+  /* Header selects smaller */
+  .header-left select {
+    font-size: 11px !important;
+    padding: 2px 5px !important;
+  }
+
+  .header-left > span {
+    font-size: 11px !important;
+  }
+
+  /* Hide timestamp on very small screens */
+  .header-right .header-timestamp {
+    display: none;
+  }
+
+  /* Drill modal timeliness tables scroll */
+  .drill-modal-content table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  .drill-modal-content table thead,
+  .drill-modal-content table tbody {
+    display: table;
+    width: 100%;
+  }
+}

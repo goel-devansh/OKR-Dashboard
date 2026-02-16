@@ -130,17 +130,14 @@ function parseExcelData(filePath) {
       const metricRows = rows.slice(2); // skip title + blank row
 
       data.annualMetrics = {};
+      // ARR and Service Rev are computed from Quarterly ARR & Service Rev sheet
       const metricKeyMap = {
-        'ARR INR Cr': 'arr',
-        'Service Rev INR Cr': 'serviceRev',
         'NDR': 'ndr',
         'GDR': 'gdr',
         'NPS Score': 'nps',
       };
 
       const unitMap = {
-        'arr': 'Cr',
-        'serviceRev': 'Cr',
         'ndr': 'x',
         'gdr': 'x',
         'nps': '',
@@ -266,6 +263,31 @@ function parseExcelData(filePath) {
         totalTarget,
         totalAchievement,
         achievementPercentage: totalTarget > 0 ? totalAchievement / totalTarget : 0,
+      };
+    }
+
+    // ── Compute ARR & Service Rev from quarterly breakdown ──
+    if (!data.annualMetrics) data.annualMetrics = {};
+
+    if (data.quarterlyARR && data.quarterlyARR.length > 0) {
+      const arrTarget = data.quarterlyARR.reduce((s, q) => s + q.target, 0);
+      const arrAch = data.quarterlyARR.reduce((s, q) => s + q.achievement, 0);
+      data.annualMetrics.arr = {
+        label: 'ARR INR Cr',
+        targetFY26: arrTarget,
+        achievementTillDate: arrAch,
+        unit: 'Cr',
+      };
+    }
+
+    if (data.quarterlyServiceRev && data.quarterlyServiceRev.length > 0) {
+      const srvTarget = data.quarterlyServiceRev.reduce((s, q) => s + q.target, 0);
+      const srvAch = data.quarterlyServiceRev.reduce((s, q) => s + q.achievement, 0);
+      data.annualMetrics.serviceRev = {
+        label: 'Service Rev INR Cr',
+        targetFY26: srvTarget,
+        achievementTillDate: srvAch,
+        unit: 'Cr',
       };
     }
 

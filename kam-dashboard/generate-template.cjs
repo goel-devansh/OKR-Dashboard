@@ -38,6 +38,25 @@ const fyLabel = `FY${fyNum}`;
 const isBaseFY = (fyNum === 26);
 const isKAM = (funcArg === 'KAM');
 
+// ─── Supported functions ────────────────────────────────────
+// Each function has its own unique sheet structure & metrics.
+// Add new functions here as they are defined.
+const SUPPORTED_FUNCTIONS = ['KAM'];
+
+if (!SUPPORTED_FUNCTIONS.includes(funcArg)) {
+  console.error(`\n  ❌ Function "${funcArg}" is not yet supported.\n`);
+  console.error(`  Currently supported functions: ${SUPPORTED_FUNCTIONS.join(', ')}`);
+  console.error('');
+  console.error('  Each function has unique metrics and sheet structures.');
+  console.error('  To add a new function:');
+  console.error('    1. Define its metrics and sheets in generate-template.cjs');
+  console.error('    2. Add the function name to SUPPORTED_FUNCTIONS');
+  console.error('    3. Add the sheet-generation logic (like the KAM block)');
+  console.error('    4. The server & dashboard will auto-discover the new Excel file');
+  console.error('');
+  process.exit(1);
+}
+
 // ─── Month helpers ──────────────────────────────────────────
 const monthNames = ['Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec', 'Jan', 'Feb', 'Mar'];
 
@@ -68,8 +87,7 @@ const baseHeroAchievements       = [22, 21, 20, 15];
 const baseQuarterlyArrAch        = [5.2, 6.8, 4.53, 2.5];
 const baseQuarterlySrvAch        = [30.5, 31.2, 35.8, 23.5];
 const baseAnnualKPIs = {
-  arr:        { target: 57.4,  ach: 19.03 },
-  serviceRev: { target: 131,   ach: 121 },
+  // ARR and Service Rev are now computed from Quarterly ARR & Service Rev sheet
   ndr:        { target: 1.20,  ach: 1.15 },
   gdr:        { target: 0.95,  ach: 0.88 },
   nps:        { target: 30,    ach: -11 },
@@ -94,18 +112,17 @@ const useBaseData = isKAM && isBaseFY;
 const wb = XLSX.utils.book_new();
 
 // ════════════════════════════════════════════════════════════
-// KAM gets the full 9-sheet template (existing behavior)
-// Non-KAM gets a minimal template (Instructions + Metrics placeholder)
+// KAM template — full 9-sheet structure
+// To add more functions, add an `else if (funcArg === 'SALES')`
+// block with the Sales-specific sheets, and so on.
 // ════════════════════════════════════════════════════════════
 
 if (isKAM) {
-  // ─── Sheet 1: Annual KPIs ────────────────────────────────
+  // ─── Sheet 1: Annual KPIs (ARR & Service Rev computed from quarterly sheet) ──
   const annualData = [
     ['KAM Dashboard - Annual KPIs', '', ''],
     ['', '', ''],
     ['Metric', `Target ${fyLabel}`, 'Achievement Till Date'],
-    ['ARR INR Cr',        baseAnnualKPIs.arr.target,        useBaseData ? baseAnnualKPIs.arr.ach        : ''],
-    ['Service Rev INR Cr', baseAnnualKPIs.serviceRev.target, useBaseData ? baseAnnualKPIs.serviceRev.ach : ''],
     ['NDR',               baseAnnualKPIs.ndr.target,        useBaseData ? baseAnnualKPIs.ndr.ach        : ''],
     ['GDR',               baseAnnualKPIs.gdr.target,        useBaseData ? baseAnnualKPIs.gdr.ach        : ''],
     ['NPS Score',         baseAnnualKPIs.nps.target,        useBaseData ? baseAnnualKPIs.nps.ach        : ''],
@@ -221,123 +238,10 @@ if (isKAM) {
   ws8['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 14 }];
   ws8['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
   XLSX.utils.book_append_sheet(wb, ws8, 'Weightages');
-} else {
-  // ═══════════════════════════════════════════════════════════
-  // NON-KAM: Minimal placeholder template
-  // Creates the same sheet structure so the parser can read it,
-  // but with empty/placeholder data
-  // ═══════════════════════════════════════════════════════════
-
-  // Sheet 1: Annual KPIs (empty)
-  const annualData = [
-    [`${funcArg} Dashboard - Annual KPIs`, '', ''],
-    ['', '', ''],
-    ['Metric', `Target ${fyLabel}`, 'Achievement Till Date'],
-    ['ARR INR Cr', '', ''],
-    ['Service Rev INR Cr', '', ''],
-    ['NDR', '', ''],
-    ['GDR', '', ''],
-    ['NPS Score', '', ''],
-  ];
-  const ws1 = XLSX.utils.aoa_to_sheet(annualData);
-  ws1['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 22 }];
-  ws1['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-  XLSX.utils.book_append_sheet(wb, ws1, 'Annual KPIs');
-
-  // Sheet 2: Monthly Billing (empty)
-  const billingData = [
-    ['On-Time Billing (INR Cr)', '', ''],
-    ['', '', ''],
-    ['Month', 'Target INR Cr', 'Achievement INR Cr'],
-    ...months.map(m => [m, '', '']),
-  ];
-  const ws2 = XLSX.utils.aoa_to_sheet(billingData);
-  ws2['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 22 }];
-  ws2['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-  XLSX.utils.book_append_sheet(wb, ws2, 'Monthly Billing');
-
-  // Sheet 3: Monthly Collection (empty)
-  const collectionData = [
-    ['On-Time Collection (INR Cr)', '', ''],
-    ['', '', ''],
-    ['Month', 'Target INR Cr', 'Achievement INR Cr'],
-    ...months.map(m => [m, '', '']),
-  ];
-  const ws3 = XLSX.utils.aoa_to_sheet(collectionData);
-  ws3['!cols'] = [{ wch: 12 }, { wch: 18 }, { wch: 22 }];
-  ws3['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-  XLSX.utils.book_append_sheet(wb, ws3, 'Monthly Collection');
-
-  // Sheet 4: Quarterly QBRs (empty)
-  const qbrData = [
-    ['QBRs Held', '', ''],
-    ['', '', ''],
-    ['Quarter', 'Target', 'Achievement'],
-    ...quarters.map(q => [q, '', '']),
-  ];
-  const ws4 = XLSX.utils.aoa_to_sheet(qbrData);
-  ws4['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }];
-  ws4['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-  XLSX.utils.book_append_sheet(wb, ws4, 'Quarterly QBRs');
-
-  // Sheet 5: Hero Stories (empty)
-  const heroData = [
-    ['Hero Stories', '', ''],
-    ['', '', ''],
-    ['Quarter', 'Target', 'Achievement'],
-    ...quarters.map(q => [q, '', '']),
-  ];
-  const ws5 = XLSX.utils.aoa_to_sheet(heroData);
-  ws5['!cols'] = [{ wch: 12 }, { wch: 12 }, { wch: 14 }];
-  ws5['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-  XLSX.utils.book_append_sheet(wb, ws5, 'Hero Stories');
-
-  // Sheet 6: Quarterly ARR & Service Revenue (empty)
-  const quarterlyArrSrvData = [
-    ['Quarterly ARR & Service Revenue (INR Cr)', '', '', '', ''],
-    ['', '', '', '', ''],
-    ['Quarter', 'ARR Target', 'ARR Achievement', 'Service Rev Target', 'Service Rev Achievement'],
-    ...quarters.map(q => [q, '', '', '', '']),
-  ];
-  const ws6 = XLSX.utils.aoa_to_sheet(quarterlyArrSrvData);
-  ws6['!cols'] = [{ wch: 12 }, { wch: 16 }, { wch: 18 }, { wch: 18 }, { wch: 22 }];
-  ws6['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 4 } }];
-  XLSX.utils.book_append_sheet(wb, ws6, 'Quarterly ARR & Service Rev');
-
-  // Sheet 7: Account Owners (empty, placeholder names)
-  const ownerData = [
-    ['Account Owner Performance (YTD)', '', '', ''],
-    ['', '', '', ''],
-    ['Account Owner', 'ARR Achievement (Cr)', 'Billing (Cr)', 'Collection (Cr)'],
-    ['Owner 1', '', '', ''],
-    ['Owner 2', '', '', ''],
-    ['Owner 3', '', '', ''],
-  ];
-  const ws7 = XLSX.utils.aoa_to_sheet(ownerData);
-  ws7['!cols'] = [{ wch: 22 }, { wch: 22 }, { wch: 16 }, { wch: 18 }];
-  ws7['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 3 } }];
-  XLSX.utils.book_append_sheet(wb, ws7, 'Account Owners');
-
-  // Sheet 8: Weightages (same defaults)
-  const weightageData = [
-    ['OKR Weightages (Must total 100)', '', ''],
-    ['', '', ''],
-    ['Metric Key', 'Metric Label', 'Weight (%)'],
-    ['arr', 'ARR', 25],
-    ['serviceRev', 'Service Revenue', 20],
-    ['ndr', 'NDR', 10],
-    ['gdr', 'GDR', 10],
-    ['nps', 'NPS Score', 5],
-    ['billing', 'On-time Billing', 15],
-    ['collection', 'On-time Collection', 10],
-    ['qbr', 'QBRs Held', 3],
-    ['heroStories', 'Hero Stories', 2],
-  ];
-  const ws8 = XLSX.utils.aoa_to_sheet(weightageData);
-  ws8['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 14 }];
-  ws8['!merges'] = [{ s: { r: 0, c: 0 }, e: { r: 0, c: 2 } }];
-  XLSX.utils.book_append_sheet(wb, ws8, 'Weightages');
 }
+// ── Add more functions here: ──
+// else if (funcArg === 'SALES') { ... Sales-specific sheets ... }
+// else if (funcArg === 'FINANCE') { ... Finance-specific sheets ... }
 
 // ─── Sheet: Instructions (always included) ──────────────────
 const instructionData = [
@@ -371,8 +275,8 @@ const instructionData = [
   ['GENERATING TEMPLATES:'],
   ['  node generate-template.cjs                  (KAM FY26 with sample data)'],
   ['  node generate-template.cjs FY27             (KAM FY27 with empty achievements)'],
-  ['  node generate-template.cjs Sales FY26       (Sales FY26 with empty data)'],
-  ['  node generate-template.cjs Finance FY27     (Finance FY27 with empty data)'],
+  ['  node generate-template.cjs KAM FY28         (KAM FY28 with empty achievements)'],
+  ['  (Other functions like Sales, Finance will be added in the future)'],
   [''],
   ['FILE NAMING:'],
   [`  This file: ${funcArg}_Dashboard_${fyLabel}.xlsx`],
@@ -401,12 +305,7 @@ console.log('   6. Quarterly ARR & Service Rev');
 console.log('   7. Account Owners');
 console.log('   8. Weightages');
 console.log('   9. Instructions');
-if (!isKAM) {
-  console.log('');
-  console.log(`NOTE: ${funcArg} is a non-KAM function.`);
-  console.log('      All data values are EMPTY — fill in your targets and achievements.');
-  console.log('      The dashboard currently shows a placeholder for non-KAM functions.');
-} else if (!isBaseFY) {
+if (!isBaseFY) {
   console.log('');
   console.log(`NOTE: ${fyLabel} template has EMPTY achievement values.`);
   console.log('      Targets are carried over from FY26 as starting values.');

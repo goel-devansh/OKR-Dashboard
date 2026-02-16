@@ -18,7 +18,9 @@
       "Bash(dir:*)",
       "Bash(copy:*)",
       "Bash(where:*)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(powershell -Command \"Start-Sleep -Seconds 3; Invoke-WebRequest -Uri 'http://localhost:3001/api/health' -UseBasicParsing | Select-Object -ExpandProperty Content\":*)",
+      "Bash(powershell -Command \"Start-Sleep -Seconds 2; \\(Invoke-WebRequest -Uri ''http://localhost:3001/api/health'' -UseBasicParsing\\).Content\")"
     ]
   }
 }
