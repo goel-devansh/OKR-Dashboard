@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { KamDataProvider, useKamDataContext } from './data/KamDataContext';
 import BillingChart from './components/BillingChart';
 import CollectionChart from './components/CollectionChart';
@@ -1034,6 +1034,62 @@ function DashboardContent() {
 
   const [drillSection, setDrillSection] = useState(null);
   const [showTakeaways, setShowTakeaways] = useState(false);
+  const [pdfExporting, setPdfExporting] = useState(false);
+  const dashboardRef = useRef(null);
+
+  /* ---------- PDF Download ---------- */
+  const handleDownloadPDF = useCallback(async () => {
+    if (pdfExporting || !dashboardRef.current) return;
+    setPdfExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+
+      const el = dashboardRef.current;
+
+      // Temporarily expand to full content for capture
+      const origHeight = el.style.height;
+      const origOverflow = el.style.overflow;
+      el.style.height = 'auto';
+      el.style.overflow = 'visible';
+
+      const canvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#f8fafc',
+        logging: false,
+        windowWidth: 1440,  // Force desktop-width capture
+      });
+
+      // Restore original styles
+      el.style.height = origHeight;
+      el.style.overflow = origOverflow;
+
+      const imgData = canvas.toDataURL('image/png');
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      // Landscape A4
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+
+      const ratio = Math.min(pageW / imgWidth, pageH / imgHeight);
+      const w = imgWidth * ratio;
+      const h = imgHeight * ratio;
+      const x = (pageW - w) / 2;
+      const y = (pageH - h) / 2;
+
+      pdf.addImage(imgData, 'PNG', x, y, w, h);
+
+      const fyLabel = selectedFY || 'FY';
+      pdf.save(`${selectedFunction}_OKR_Dashboard_${fyLabel}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+    } finally {
+      setPdfExporting(false);
+    }
+  }, [pdfExporting, selectedFunction, selectedFY]);
   const openDrill = useCallback((section) => setDrillSection(section), []);
   const closeDrill = useCallback(() => setDrillSection(null), []);
 
@@ -1106,7 +1162,7 @@ function DashboardContent() {
 
   /* ---------- Render ---------- */
   return (
-    <div className="dashboard-shell" style={{
+    <div ref={dashboardRef} className="dashboard-shell" style={{
       height: '100vh', overflow: 'hidden', display: 'flex', flexDirection: 'column',
       background: '#f8fafc', fontFamily: "'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif",
     }}>
@@ -1139,6 +1195,19 @@ function DashboardContent() {
           </>}
         </div>
         <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* PDF Download Button */}
+          <button onClick={handleDownloadPDF} disabled={pdfExporting} style={{
+            display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
+            border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
+            color: '#E81F76', fontSize: 10, fontWeight: 700, cursor: pdfExporting ? 'wait' : 'pointer',
+            textTransform: 'uppercase', letterSpacing: 0.5, transition: 'all 0.2s',
+            opacity: pdfExporting ? 0.6 : 1,
+          }}
+            onMouseEnter={e => { if (!pdfExporting) e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
+          >
+            {pdfExporting ? '⏳ Exporting...' : '📄 Download PDF'}
+          </button>
           {/* Key Takeaways Button */}
           <button onClick={() => setShowTakeaways(true)} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
