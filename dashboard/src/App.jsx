@@ -357,10 +357,10 @@ const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onC
    Compact Legend for mini-charts (inline dots + labels)
    ================================================================ */
 const MiniLegend = ({ items }) => (
-  <div style={{ display: 'flex', justifyContent: 'center', gap: 10, marginTop: 2 }}>
+  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center', paddingLeft: 4 }}>
     {items.map(({ color, label }) => (
-      <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 8, color: '#94a3b8', fontWeight: 600 }}>
-        <span style={{ width: 6, height: 6, borderRadius: '50%', background: color, flexShrink: 0 }} />
+      <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 7.5, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />
         {label}
       </span>
     ))}
@@ -368,13 +368,27 @@ const MiniLegend = ({ items }) => (
 );
 
 /* ================================================================
+   Custom Bar Label — small value on top of each bar
+   ================================================================ */
+const BarLabel = ({ x, y, width, value, fill }) => {
+  if (value === 0 || value === null || value === undefined) return null;
+  const displayVal = typeof value === 'number' && value >= 1
+    ? (value >= 100 ? Math.round(value) : value.toFixed(1))
+    : value;
+  return (
+    <text x={x + width / 2} y={y - 3} textAnchor="middle" fontSize={7} fontWeight="700"
+      fill={fill || '#64748b'}>{displayVal}</text>
+  );
+};
+
+/* ================================================================
    Mini Gauge — semi-circle progress for single-value metrics
    ================================================================ */
 const MiniGauge = ({ value, target, label, color, format = 'percent' }) => {
   const pct = target !== 0 ? Math.min(Math.max(value / target, 0), 1.5) : 0;
   const displayPct = Math.min(pct, 1.0); // clamp arc to 100%
-  const size = 80;
-  const strokeWidth = 8;
+  const size = 120;
+  const strokeWidth = 10;
   const radius = (size - strokeWidth) / 2;
   // Semi-circle: half circumference
   const halfCirc = Math.PI * radius;
@@ -383,10 +397,11 @@ const MiniGauge = ({ value, target, label, color, format = 'percent' }) => {
   const formatVal = format === 'percent'
     ? `${(value * 100).toFixed(0)}%`
     : value;
+  const targetVal = format === 'percent' ? `${(target * 100).toFixed(0)}%` : target;
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'center' }}>
-      <svg width={size} height={size / 2 + 10} viewBox={`0 0 ${size} ${size / 2 + 10}`}>
+      <svg width={size} height={size / 2 + 16} viewBox={`0 0 ${size} ${size / 2 + 16}`}>
         {/* Background arc */}
         <path
           d={`M ${strokeWidth / 2} ${size / 2} A ${radius} ${radius} 0 0 1 ${size - strokeWidth / 2} ${size / 2}`}
@@ -400,11 +415,14 @@ const MiniGauge = ({ value, target, label, color, format = 'percent' }) => {
           style={{ transition: 'stroke-dashoffset 1s ease-out' }}
         />
         {/* Center value */}
-        <text x={size / 2} y={size / 2 - 2} textAnchor="middle" dominantBaseline="auto"
-          fontSize="16" fontWeight="800" fill={color}>{formatVal}</text>
+        <text x={size / 2} y={size / 2 - 4} textAnchor="middle" dominantBaseline="auto"
+          fontSize="22" fontWeight="800" fill={color}>{formatVal}</text>
+        {/* 0% and 100% labels at arc ends */}
+        <text x={strokeWidth / 2 + 2} y={size / 2 + 12} textAnchor="start" fontSize="7" fill="#94a3b8">0%</text>
+        <text x={size - strokeWidth / 2 - 2} y={size / 2 + 12} textAnchor="end" fontSize="7" fill="#94a3b8">100%</text>
       </svg>
-      <div style={{ display: 'flex', gap: 8, marginTop: 2, fontSize: 8, color: '#94a3b8', fontWeight: 600 }}>
-        <span>Target: {format === 'percent' ? `${(target * 100).toFixed(0)}%` : target}</span>
+      <div style={{ display: 'flex', gap: 8, marginTop: 0, fontSize: 9, color: '#94a3b8', fontWeight: 600 }}>
+        <span>Target: <span style={{ color: '#475569', fontWeight: 700 }}>{targetVal}</span></span>
       </div>
     </div>
   );
@@ -1365,25 +1383,27 @@ function DashboardContent() {
             target={annualMetrics.arr.targetFY26.toFixed(1)} unit="Cr"
             achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
           >
-            {(quarterlyARR || []).length > 0 && (<>
-              <ResponsiveContainer width="100%" height="85%">
-                <BarChart data={quarterlyARR} margin={{ top: 4, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Actual']}
-                    labelFormatter={(l) => l}
-                  />
-                  <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" />
-                  <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement">
-                    {(quarterlyARR || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#6366f1', label: 'Actual' }]} />
-            </>)}
+            {(quarterlyARR || []).length > 0 && (
+              <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={quarterlyARR} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                      tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                      formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Actual']}
+                      labelFormatter={(l) => l}
+                    />
+                    <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
+                    <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement" label={<BarLabel fill="#6366f1" />}>
+                      {(quarterlyARR || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#6366f1', label: 'Actual' }]} />
+              </div>
+            )}
           </MetricSummaryCard>
 
           {/* 2. Service Revenue */}
@@ -1391,25 +1411,27 @@ function DashboardContent() {
             target={annualMetrics.serviceRev.targetFY26} unit="Cr"
             achievement={metricAchievements.serviceRev} color="#8b5cf6" onClick={() => openDrill('serviceRev')}
           >
-            {(quarterlyServiceRev || []).length > 0 && (<>
-              <ResponsiveContainer width="100%" height="85%">
-                <BarChart data={quarterlyServiceRev} margin={{ top: 4, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Actual']}
-                    labelFormatter={(l) => l}
-                  />
-                  <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" />
-                  <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement">
-                    {(quarterlyServiceRev || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Actual' }]} />
-            </>)}
+            {(quarterlyServiceRev || []).length > 0 && (
+              <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={quarterlyServiceRev} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                      tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                      formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Actual']}
+                      labelFormatter={(l) => l}
+                    />
+                    <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
+                    <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement" label={<BarLabel fill="#8b5cf6" />}>
+                      {(quarterlyServiceRev || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Actual' }]} />
+              </div>
+            )}
           </MetricSummaryCard>
 
           {/* 3. NDR */}
@@ -1461,27 +1483,29 @@ function DashboardContent() {
             target="100" unit="%"
             achievement={billingTimeliness.score} color="#6366f1" onClick={() => openDrill('billing')}
           >
-            <ResponsiveContainer width="100%" height="85%">
-              <ComposedChart data={monthlyBilling.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
-                <defs>
-                  <linearGradient id="sparkBill" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v) => v.substring(0, 3)} interval={1} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                  formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Billed']}
-                  labelFormatter={(l) => `${l}`}
-                />
-                <Area type="monotone" dataKey="achievement" stroke="#6366f1" strokeWidth={1.5} fill="url(#sparkBill)" dot={false} activeDot={{ r: 3, fill: '#6366f1' }} name="achievement" />
-                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
-              </ComposedChart>
-            </ResponsiveContainer>
-            <MiniLegend items={[{ color: '#6366f1', label: 'Billed' }, { color: '#94a3b8', label: 'Target' }]} />
+            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={monthlyBilling.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
+                  <defs>
+                    <linearGradient id="sparkBill" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                    tickFormatter={(v) => v.substring(0, 3)} interval={1} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                    formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Billed']}
+                    labelFormatter={(l) => `${l}`}
+                  />
+                  <Area type="monotone" dataKey="achievement" stroke="#6366f1" strokeWidth={1.5} fill="url(#sparkBill)" dot={false} activeDot={{ r: 3, fill: '#6366f1' }} name="achievement" />
+                  <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <MiniLegend items={[{ color: '#6366f1', label: 'Billed' }, { color: '#94a3b8', label: 'Target' }]} />
+            </div>
           </MetricSummaryCard>
 
           {/* 7. On-Time Collection (Timeliness) */}
@@ -1489,27 +1513,29 @@ function DashboardContent() {
             target="100" unit="%"
             achievement={collectionTimeliness.score} color="#06b6d4" onClick={() => openDrill('collection')}
           >
-            <ResponsiveContainer width="100%" height="85%">
-              <ComposedChart data={monthlyCollection.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
-                <defs>
-                  <linearGradient id="sparkColl" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.02} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                  tickFormatter={(v) => v.substring(0, 3)} interval={1} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                  formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Collected']}
-                  labelFormatter={(l) => `${l}`}
-                />
-                <Area type="monotone" dataKey="achievement" stroke="#06b6d4" strokeWidth={1.5} fill="url(#sparkColl)" dot={false} activeDot={{ r: 3, fill: '#06b6d4' }} name="achievement" />
-                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
-              </ComposedChart>
-            </ResponsiveContainer>
-            <MiniLegend items={[{ color: '#06b6d4', label: 'Collected' }, { color: '#94a3b8', label: 'Target' }]} />
+            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart data={monthlyCollection.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
+                  <defs>
+                    <linearGradient id="sparkColl" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.02} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                    tickFormatter={(v) => v.substring(0, 3)} interval={1} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                    formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Collected']}
+                    labelFormatter={(l) => `${l}`}
+                  />
+                  <Area type="monotone" dataKey="achievement" stroke="#06b6d4" strokeWidth={1.5} fill="url(#sparkColl)" dot={false} activeDot={{ r: 3, fill: '#06b6d4' }} name="achievement" />
+                  <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
+                </ComposedChart>
+              </ResponsiveContainer>
+              <MiniLegend items={[{ color: '#06b6d4', label: 'Collected' }, { color: '#94a3b8', label: 'Target' }]} />
+            </div>
           </MetricSummaryCard>
 
           {/* 8. QBRs Held */}
@@ -1517,20 +1543,22 @@ function DashboardContent() {
             target={null} unit=""
             achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
           >
-            <ResponsiveContainer width="100%" height="85%">
-              <BarChart data={qbrCombined} margin={{ top: 4, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                  formatter={(v, name) => [v, name === 'qbrTarget' ? 'Target' : 'QBRs']}
-                  labelFormatter={(l) => l}
-                />
-                <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} />
-                <Bar dataKey="qbr" fill="#8b5cf6" radius={[3, 3, 0, 0]} barSize={10} />
-              </BarChart>
-            </ResponsiveContainer>
-            <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
+            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                    formatter={(v, name) => [v, name === 'qbrTarget' ? 'Target' : 'QBRs']}
+                    labelFormatter={(l) => l}
+                  />
+                  <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
+                  <Bar dataKey="qbr" fill="#8b5cf6" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#8b5cf6" />} />
+                </BarChart>
+              </ResponsiveContainer>
+              <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
+            </div>
           </MetricSummaryCard>
 
           {/* 9. Hero Stories */}
@@ -1538,20 +1566,22 @@ function DashboardContent() {
             target={null} unit=""
             achievement={metricAchievements.heroStories} color="#f59e0b" onClick={() => openDrill('heroStories')}
           >
-            <ResponsiveContainer width="100%" height="85%">
-              <BarChart data={qbrCombined} margin={{ top: 4, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                  formatter={(v, name) => [v, name === 'heroTarget' ? 'Target' : 'Hero Stories']}
-                  labelFormatter={(l) => l}
-                />
-                <Bar dataKey="heroTarget" fill="#fde68a" radius={[3, 3, 0, 0]} barSize={10} />
-                <Bar dataKey="hero" fill="#f59e0b" radius={[3, 3, 0, 0]} barSize={10} />
-              </BarChart>
-            </ResponsiveContainer>
-            <MiniLegend items={[{ color: '#fde68a', label: 'Target' }, { color: '#f59e0b', label: 'Done' }]} />
+            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                  <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                  <Tooltip
+                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                    formatter={(v, name) => [v, name === 'heroTarget' ? 'Target' : 'Hero Stories']}
+                    labelFormatter={(l) => l}
+                  />
+                  <Bar dataKey="heroTarget" fill="#fde68a" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#d4a017" />} />
+                  <Bar dataKey="hero" fill="#f59e0b" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f59e0b" />} />
+                </BarChart>
+              </ResponsiveContainer>
+              <MiniLegend items={[{ color: '#fde68a', label: 'Target' }, { color: '#f59e0b', label: 'Done' }]} />
+            </div>
           </MetricSummaryCard>
         </div>
       </div>
