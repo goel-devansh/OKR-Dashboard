@@ -345,7 +345,7 @@ const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onC
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: '#1e293b' }}>{value}</span>
-        <span style={{ fontSize: 9, color: '#94a3b8' }}>/ {target} {unit}</span>
+        {target != null && <span style={{ fontSize: 9, color: '#94a3b8' }}>/ {target} {unit}</span>}
       </div>
       {children && <div style={{ flex: 1, minHeight: 0 }}>{children}</div>}
     </div>
@@ -1368,7 +1368,7 @@ function DashboardContent() {
 
           {/* 8. QBRs Held */}
           <MetricSummaryCard title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
-            target={qbrTargetTotal} unit=""
+            target={null} unit=""
             achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
           >
             <ResponsiveContainer width="100%" height="100%">
@@ -1387,7 +1387,7 @@ function DashboardContent() {
 
           {/* 9. Hero Stories */}
           <MetricSummaryCard title="Hero Stories" value={`${heroTotal}/${heroTargetTotal}`}
-            target={heroTargetTotal} unit=""
+            target={null} unit=""
             achievement={metricAchievements.heroStories} color="#f59e0b" onClick={() => openDrill('heroStories')}
           >
             <ResponsiveContainer width="100%" height="100%">
