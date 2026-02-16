@@ -60,6 +60,22 @@ export const quarterlyHeroStories = [
   { quarter: 'Q4 FY26', target: 25, achievement: 15, percentage: 0.60 },
 ];
 
+// Quarterly ARR (INR Cr)
+export const quarterlyARR = [
+  { quarter: 'Q1 FY26', target: 14.35, achievement: 5.2, percentage: 5.2/14.35 },
+  { quarter: 'Q2 FY26', target: 14.35, achievement: 6.8, percentage: 6.8/14.35 },
+  { quarter: 'Q3 FY26', target: 14.35, achievement: 4.53, percentage: 4.53/14.35 },
+  { quarter: 'Q4 FY26', target: 14.35, achievement: 2.5, percentage: 2.5/14.35 },
+];
+
+// Quarterly Service Revenue (INR Cr)
+export const quarterlyServiceRev = [
+  { quarter: 'Q1 FY26', target: 32.75, achievement: 30.5, percentage: 30.5/32.75 },
+  { quarter: 'Q2 FY26', target: 32.75, achievement: 31.2, percentage: 31.2/32.75 },
+  { quarter: 'Q3 FY26', target: 32.75, achievement: 35.8, percentage: 35.8/32.75 },
+  { quarter: 'Q4 FY26', target: 32.75, achievement: 23.5, percentage: 23.5/32.75 },
+];
+
 // Account Owner Performance (YTD)
 export const accountOwnerPerformance = [
   { name: 'Ansu Jain', arrAchievement: 0.78, billing: 15.68, collection: 15.82 },
@@ -74,46 +90,6 @@ export const accountOwnerPerformance = [
   { name: 'Vishwanath Gurav', arrAchievement: 19.53, billing: 65.99, collection: 77.98 },
 ];
 
-// ARR Summary by Quarter
-export const arrQuarterly = {
-  q1: { target: 9.3, booked: 0.03, openPipe: 0.98, achievement: 0.003 },
-  q2: { target: 13.95, booked: 19.83, openPipe: 1.0, achievement: 1.42 },
-  q3: { target: 11.625, booked: -0.71, openPipe: 7.38, achievement: -0.06 },
-  q4: { target: 11.625, booked: 0, openPipe: 23.98, achievement: 0 },
-  fy26: { target: 46.5, booked: 19.16, openPipe: 33.34, achievement: 0.41 },
-};
-
-// Top Pipeline Opportunities
-export const topOpportunities = [
-  { name: 'RBI Gold 8 Upgrade', account: 'Reserve Bank of India', owner: 'Vishwanath Gurav', arr: 5.0 },
-  { name: 'Upgrade + AI - TP Bank', account: 'Tien Phong Commercial JSB', owner: 'Ansu Jain', arr: 3.28 },
-  { name: 'Corporate Banking - TP Bank', account: 'Tien Phong Commercial JSB', owner: 'Ansu Jain', arr: 2.05 },
-  { name: 'WBS Corporate CRMNEXT', account: 'Security Bank Corp', owner: 'Bhavna Sharma', arr: 2.0 },
-  { name: 'HDFC Corporate CRM', account: 'HDFC Bank Limited', owner: 'Bhavik Solani', arr: 1.6 },
-  { name: 'QIB Cloud Native CRM', account: 'Qatar Islamic Bank', owner: 'Apoorv Anand', arr: 1.5 },
-];
-
-// Booked ARR Details
-export const bookedARR = [
-  { account: 'SBI Life', amount: 19.5 },
-  { account: 'Bank Dhofar', amount: 2.1 },
-  { account: 'Bank Danamon', amount: 0.13 },
-  { account: 'IIAB', amount: 0.6 },
-  { account: 'RBL', amount: 0.8 },
-  { account: 'HDFC Bank', amount: 0.2 },
-  { account: 'Ujjivan', amount: 0.12 },
-];
-
-// Contraction & Churn
-export const contractionChurn = [
-  { account: 'Adira', amount: -2.4 },
-  { account: 'TU Cibil', amount: -0.85 },
-  { account: 'Nippon', amount: -0.4 },
-  { account: 'KLI', amount: -0.2 },
-  { account: 'BDO Unibank', amount: -1.4 },
-  { account: 'IDFC', amount: -1.2 },
-];
-
 // Billing & Collection totals
 export const billingTotals = {
   totalTarget: 300,
@@ -125,4 +101,17 @@ export const collectionTotals = {
   totalTarget: 360,
   totalAchievement: 261,
   achievementPercentage: 261 / 360,
+};
+
+// Default OKR Weightages (editable from Excel)
+export const defaultWeightages = {
+  arr: { label: 'ARR', weight: 25 },
+  serviceRev: { label: 'Service Revenue', weight: 20 },
+  ndr: { label: 'NDR', weight: 10 },
+  gdr: { label: 'GDR', weight: 10 },
+  nps: { label: 'NPS Score', weight: 5 },
+  billing: { label: 'On-time Billing', weight: 15 },
+  collection: { label: 'On-time Collection', weight: 10 },
+  qbr: { label: 'QBRs Held', weight: 3 },
+  heroStories: { label: 'Hero Stories', weight: 2 },
 };

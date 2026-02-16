@@ -1,0 +1,25 @@
+# Dependencies
+node_modules/
+kam-dashboard/node_modules/
+
+# Dev/build artifacts
+kam-dashboard/dist/
+*.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea
+.DS_Store
+*.suo
+*.sw?
+
+# Excel data files (contain private business data)
+kam-dashboard/*.xlsx
+
+# OS files
+Thumbs.db
+nul
