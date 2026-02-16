@@ -424,7 +424,8 @@
   /* Switch to scrollable layout */
   .dashboard-shell {
     height: auto !important;
-    overflow: auto !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
     min-height: 100vh;
   }
 
@@ -474,12 +475,17 @@
     min-width: 120px;
   }
 
-  /* Metric grid: 3 columns */
+  /* Metric grid: 3 columns — auto rows to allow natural sizing */
   .dashboard-metrics-grid {
     grid-template-columns: repeat(3, 1fr) !important;
     grid-template-rows: auto !important;
     overflow: visible !important;
     gap: 6px !important;
+  }
+
+  /* Each metric card gets a guaranteed min-height for chart visibility */
+  .dashboard-metrics-grid > div {
+    min-height: 180px;
   }
 
   /* Header adjustments */
@@ -498,6 +504,12 @@
   .header-right {
     gap: 6px !important;
   }
+
+  /* Header buttons: compact */
+  .header-right button {
+    padding: 4px 8px !important;
+    font-size: 9px !important;
+  }
 }
 
 /* ─── Mobile: ≤ 768px ──────────────────────────────────────── */
@@ -514,14 +526,33 @@
     min-width: 100px;
   }
 
-  /* Metric cards: 2 columns */
+  /* Metric cards: 2 columns with proper height for charts */
   .dashboard-metrics-grid {
     grid-template-columns: repeat(2, 1fr) !important;
   }
 
-  /* MetricSummaryCard inner chart area */
   .dashboard-metrics-grid > div {
-    min-height: 140px;
+    min-height: 200px;
+  }
+
+  /* Chart wrapper inside metric cards: stack chart + legend vertically */
+  .dashboard-metrics-grid .metric-chart-wrap {
+    flex-direction: column !important;
+    gap: 0 !important;
+  }
+
+  /* Legend goes below chart on mobile */
+  .dashboard-metrics-grid .metric-chart-wrap .mini-legend {
+    flex-direction: row !important;
+    padding-left: 0 !important;
+    padding-top: 2px;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  /* Chart area inside metric cards: ensure visible */
+  .metric-chart-area {
+    min-height: 100px !important;
   }
 
   /* Modal adjustments */
@@ -560,10 +591,28 @@
   .header-left .bn-logo svg {
     height: 22px !important;
   }
+
+  /* Balanced scorecard modal table — scroll on narrow screens */
+  .scorecard-table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .scorecard-table-wrap table {
+    font-size: 11px !important;
+  }
+
+  .scorecard-table-wrap table th,
+  .scorecard-table-wrap table td {
+    padding: 7px 8px !important;
+  }
 }
 
 /* ─── Small phone: ≤ 480px ─────────────────────────────────── */
 @media (max-width: 480px) {
+  .dashboard-shell {
+    -webkit-overflow-scrolling: touch;
+  }
+
   /* Sidebar becomes fully stacked */
   .dashboard-sidebar {
     flex-direction: column !important;
@@ -576,13 +625,31 @@
     min-width: 80px;
   }
 
-  /* Metric cards: single column */
+  /* Metric cards: single column — full width, taller for graphs */
   .dashboard-metrics-grid {
     grid-template-columns: 1fr !important;
   }
 
   .dashboard-metrics-grid > div {
-    min-height: 160px;
+    min-height: 220px;
+  }
+
+  /* The chart flex container: always vertical on small phones */
+  .dashboard-metrics-grid .metric-chart-wrap {
+    flex-direction: column !important;
+  }
+
+  .dashboard-metrics-grid .metric-chart-wrap .mini-legend {
+    flex-direction: row !important;
+    padding-left: 0 !important;
+    padding-top: 2px;
+    justify-content: center !important;
+    gap: 8px !important;
+  }
+
+  /* Chart area: taller on single-column for full chart visibility */
+  .metric-chart-area {
+    min-height: 130px !important;
   }
 
   /* Header selects smaller */
@@ -595,6 +662,18 @@
     font-size: 11px !important;
   }
 
+  /* Header buttons: show emoji only, hide text */
+  .header-right button .btn-label {
+    display: none;
+  }
+
+  .header-right button {
+    padding: 4px 8px !important;
+    font-size: 14px !important;
+    min-width: 32px;
+    justify-content: center;
+  }
+
   /* Hide timestamp on very small screens */
   .header-right .header-timestamp {
     display: none;
@@ -605,11 +684,53 @@
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+    -webkit-overflow-scrolling: touch;
   }
 
   .drill-modal-content table thead,
   .drill-modal-content table tbody {
     display: table;
     width: 100%;
+  }
+
+  /* Scorecard modal: even more compact */
+  .scorecard-table-wrap table {
+    font-size: 10px !important;
+  }
+
+  .scorecard-table-wrap table th,
+  .scorecard-table-wrap table td {
+    padding: 6px 5px !important;
+    white-space: nowrap;
+  }
+}
+
+/* ─── Very small phone: ≤ 360px ──────────────────────────── */
+@media (max-width: 360px) {
+  .dashboard-body {
+    padding: 4px !important;
+    gap: 4px !important;
+  }
+
+  .dashboard-metrics-grid {
+    gap: 4px !important;
+  }
+
+  .dashboard-metrics-grid > div {
+    min-height: 200px;
+  }
+
+  .header-left {
+    gap: 4px !important;
+  }
+
+  .header-right {
+    gap: 4px !important;
+  }
+
+  /* Even the FY dropdown, keep compact */
+  .header-left select {
+    font-size: 10px !important;
+    padding: 2px 4px !important;
   }
 }

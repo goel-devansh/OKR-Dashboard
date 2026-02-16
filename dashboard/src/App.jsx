@@ -327,7 +327,7 @@ const MetricTile = ({ label, achievement, weight, onClick }) => {
 const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onClick, children }) => {
   const pctColor = getAchievementColor(achievement);
   return (
-    <div onClick={onClick} style={{
+    <div className="metric-summary-card" onClick={onClick} style={{
       background: '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer',
       boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.2s',
       display: 'flex', flexDirection: 'column', height: '100%',
@@ -348,7 +348,7 @@ const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onC
         <span style={{ fontSize: 16, fontWeight: 800, color: '#1e293b' }}>{value}</span>
         {target != null && <span style={{ fontSize: 9, color: '#94a3b8' }}>/ {target} {unit}</span>}
       </div>
-      {children && <div style={{ flex: 1, minHeight: 0 }}>{children}</div>}
+      {children && <div className="metric-chart-area" style={{ flex: 1, minHeight: 80 }}>{children}</div>}
     </div>
   );
 };
@@ -357,7 +357,7 @@ const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onC
    Compact Legend for mini-charts (inline dots + labels)
    ================================================================ */
 const MiniLegend = ({ items }) => (
-  <div style={{ display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center', paddingLeft: 4 }}>
+  <div className="mini-legend" style={{ display: 'flex', flexDirection: 'column', gap: 3, justifyContent: 'center', paddingLeft: 4 }}>
     {items.map(({ color, label }) => (
       <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 3, fontSize: 7.5, color: '#94a3b8', fontWeight: 600, whiteSpace: 'nowrap' }}>
         <span style={{ width: 5, height: 5, borderRadius: '50%', background: color, flexShrink: 0 }} />
@@ -635,7 +635,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
         <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>📊 KAM Balanced Scorecard</h3>
         <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>{selectedFY || 'FY'} — Live from dashboard data</p>
 
-        <div style={{ overflowX: 'auto' }}>
+        <div className="scorecard-table-wrap" style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
             <thead>
               <tr style={{ background: '#1a1a2e', color: '#fff' }}>
@@ -1248,6 +1248,7 @@ function DashboardContent() {
   const [drillSection, setDrillSection] = useState(null);
   const [showTakeaways, setShowTakeaways] = useState(false);
   const [showScorecard, setShowScorecard] = useState(false);
+  const [showBalancedImg, setShowBalancedImg] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
 
@@ -1409,7 +1410,7 @@ function DashboardContent() {
           </>}
         </div>
         <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          {/* Balanced Scorecard Button */}
+          {/* Scorecard Summary Button (dynamic data table) */}
           {selectedFunction === 'KAM' && data && (
             <button onClick={() => setShowScorecard(true)} style={{
               display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
@@ -1420,7 +1421,21 @@ function DashboardContent() {
               onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
               onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
             >
-              📊 Scorecard
+              📊<span className="btn-label"> Scorecard Summary</span>
+            </button>
+          )}
+          {/* Balanced Scorecard Button (image popup) */}
+          {selectedFunction === 'KAM' && data && (
+            <button onClick={() => setShowBalancedImg(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
+              border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
+              color: '#E81F76', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+              textTransform: 'uppercase', letterSpacing: 0.5, transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
+            >
+              🎯<span className="btn-label"> Balanced Scorecard</span>
             </button>
           )}
           {/* PDF Download Button */}
@@ -1434,7 +1449,7 @@ function DashboardContent() {
             onMouseEnter={e => { if (!pdfExporting) e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
           >
-            {pdfExporting ? '⏳ Exporting...' : '📄 Download PDF'}
+            {pdfExporting ? <><span>⏳</span><span className="btn-label"> Exporting...</span></> : <><span>📄</span><span className="btn-label"> Download PDF</span></>}
           </button>
           {/* Key Takeaways Button */}
           <button onClick={() => setShowTakeaways(true)} style={{
@@ -1446,7 +1461,7 @@ function DashboardContent() {
             onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
             onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
           >
-            📋 Key Takeaways
+            📋<span className="btn-label"> Key Takeaways</span>
           </button>
           <span style={{
             display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, fontWeight: 700,
@@ -1536,7 +1551,7 @@ function DashboardContent() {
             achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
           >
             {(quarterlyARR || []).length > 0 && (
-              <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+              <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={quarterlyARR} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -1564,7 +1579,7 @@ function DashboardContent() {
             achievement={metricAchievements.serviceRev} color="#8b5cf6" onClick={() => openDrill('serviceRev')}
           >
             {(quarterlyServiceRev || []).length > 0 && (
-              <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+              <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart data={quarterlyServiceRev} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -1635,7 +1650,7 @@ function DashboardContent() {
             target="100" unit="%"
             achievement={billingTimeliness.score} color="#6366f1" onClick={() => openDrill('billing')}
           >
-            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={monthlyBilling.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
                   <defs>
@@ -1665,7 +1680,7 @@ function DashboardContent() {
             target="100" unit="%"
             achievement={collectionTimeliness.score} color="#06b6d4" onClick={() => openDrill('collection')}
           >
-            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <ComposedChart data={monthlyCollection.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
                   <defs>
@@ -1695,7 +1710,7 @@ function DashboardContent() {
             target={null} unit=""
             achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
           >
-            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -1718,7 +1733,7 @@ function DashboardContent() {
             target={null} unit=""
             achievement={metricAchievements.heroStories} color="#f59e0b" onClick={() => openDrill('heroStories')}
           >
-            <div style={{ display: 'flex', height: '100%', gap: 2 }}>
+            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
@@ -1763,6 +1778,34 @@ function DashboardContent() {
           okrScore={okrScore}
           selectedFY={selectedFY}
         />
+      )}
+      {showBalancedImg && (
+        <div onClick={() => setShowBalancedImg(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, animation: 'fadeIn 0.2s ease',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff', borderRadius: 16, padding: 20,
+            width: '96vw', maxWidth: 1100, maxHeight: '94vh', overflowY: 'auto',
+            position: 'relative', animation: 'slideUp 0.3s ease',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.25)',
+          }}>
+            <button onClick={() => setShowBalancedImg(false)} style={{
+              position: 'absolute', top: 12, right: 12, width: 34, height: 34, borderRadius: 8,
+              border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
+              zIndex: 1,
+            }}>✕</button>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 12 }}>🎯 KAM OKR — Balanced Scorecard</h3>
+            <img
+              src="./kam-balanced-scorecard.jpg"
+              alt="KAM Balanced Scorecard"
+              style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
+            />
+          </div>
+        </div>
       )}
     </div>
   );
