@@ -565,6 +565,143 @@ const KeyTakeawaysModal = ({ takeaways, onClose }) => {
 };
 
 /* ================================================================
+   Balanced Scorecard Modal — dynamic table from live data
+   ================================================================ */
+const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collectionTotals,
+  quarterlyQBRs, quarterlyHeroStories, quarterlyARR, quarterlyServiceRev,
+  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY }) => {
+
+  const fmt = (v, type) => {
+    if (type === 'cr') return `₹${(v / 10000000).toFixed(1)} Cr`;
+    if (type === 'pct') return `${(v * 100).toFixed(0)}%`;
+    if (type === 'num') return String(Math.round(v));
+    if (type === 'score') return `${(v * 100).toFixed(0)}%`;
+    return String(v);
+  };
+
+  // Build rows from live data
+  const arrTarget = annualMetrics.arr?.targetFY26 || 0;
+  const arrAch = annualMetrics.arr?.achievementTillDate || 0;
+  const srvTarget = annualMetrics.serviceRev?.targetFY26 || 0;
+  const srvAch = annualMetrics.serviceRev?.achievementTillDate || 0;
+  const billingTarget = billingTotals?.totalTarget || 0;
+  const billingAch = billingTotals?.totalAchievement || 0;
+  const collTarget = collectionTotals?.totalTarget || 0;
+  const collAch = collectionTotals?.totalAchievement || 0;
+  const ndrTarget = annualMetrics.ndr?.targetFY26 || 0;
+  const ndrAch = annualMetrics.ndr?.achievementTillDate || 0;
+  const gdrTarget = annualMetrics.gdr?.targetFY26 || 0;
+  const gdrAch = annualMetrics.gdr?.achievementTillDate || 0;
+  const npsTarget = annualMetrics.nps?.targetFY26 || 0;
+  const npsAch = annualMetrics.nps?.achievementTillDate || 0;
+  const qbrAchTotal = quarterlyQBRs.reduce((s, q) => s + q.achievement, 0);
+  const qbrTarTotal = quarterlyQBRs.reduce((s, q) => s + q.target, 0);
+  const heroAchTotal = quarterlyHeroStories.reduce((s, q) => s + q.achievement, 0);
+  const heroTarTotal = quarterlyHeroStories.reduce((s, q) => s + q.target, 0);
+
+  const rows = [
+    { label: 'Annual Recurring Revenue (ARR)', key: 'arr', target: fmt(arrTarget, 'cr'), achievement: fmt(arrAch, 'cr'), pct: metricAchievements.arr },
+    { label: 'Service Revenue', key: 'serviceRev', target: fmt(srvTarget, 'cr'), achievement: fmt(srvAch, 'cr'), pct: metricAchievements.serviceRev },
+    { label: 'On-Time Billing', key: 'billing', target: fmt(billingTarget, 'cr'), achievement: fmt(billingAch, 'cr'), pct: billingTimeliness },
+    { label: 'On-Time Collection', key: 'collection', target: fmt(collTarget, 'cr'), achievement: fmt(collAch, 'cr'), pct: collectionTimeliness },
+    { label: 'Net Dollar Retention (NDR)', key: 'ndr', target: `${(ndrTarget * 100).toFixed(0)}%`, achievement: `${(ndrAch * 100).toFixed(0)}%`, pct: metricAchievements.ndr },
+    { label: 'Gross Dollar Retention (GDR)', key: 'gdr', target: `${(gdrTarget * 100).toFixed(0)}%`, achievement: `${(gdrAch * 100).toFixed(0)}%`, pct: metricAchievements.gdr },
+    { label: 'NPS Score', key: 'nps', target: String(Math.round(npsTarget)), achievement: String(Math.round(npsAch)), pct: metricAchievements.nps },
+    { label: 'QBRs Held', key: 'qbr', target: String(Math.round(qbrTarTotal)), achievement: String(Math.round(qbrAchTotal)), pct: metricAchievements.qbr },
+    { label: 'Hero Stories', key: 'heroStories', target: String(Math.round(heroTarTotal)), achievement: String(Math.round(heroAchTotal)), pct: metricAchievements.heroStories },
+  ];
+
+  const totalWeight = rows.reduce((s, r) => s + (weightages[r.key]?.weight || 0), 0);
+
+  return (
+    <div onClick={onClose} style={{
+      position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+      background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      zIndex: 9999, animation: 'fadeIn 0.2s ease',
+    }}>
+      <div onClick={e => e.stopPropagation()} style={{
+        background: '#fff', borderRadius: 16, padding: 28,
+        width: '94vw', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto',
+        position: 'relative', animation: 'slideUp 0.3s ease',
+        boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
+      }}>
+        <button onClick={onClose} style={{
+          position: 'absolute', top: 14, right: 14, width: 34, height: 34, borderRadius: 8,
+          border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
+        }}>✕</button>
+
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>📊 KAM Balanced Scorecard</h3>
+        <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>{selectedFY || 'FY'} — Live from dashboard data</p>
+
+        <div style={{ overflowX: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+            <thead>
+              <tr style={{ background: '#1a1a2e', color: '#fff' }}>
+                <th style={{ padding: '10px 14px', textAlign: 'left', fontWeight: 700, borderRadius: '8px 0 0 0' }}>Metric</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700 }}>Weightage</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700 }}>{selectedFY || 'FY'} Target</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700 }}>Achievement</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700 }}>Achievement %</th>
+                <th style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, borderRadius: '0 8px 0 0' }}>Weighted Score</th>
+              </tr>
+            </thead>
+            <tbody>
+              {rows.map((r, i) => {
+                const weight = weightages[r.key]?.weight || 0;
+                const cappedPct = Math.min(Math.max(r.pct, 0), 1.0);
+                const weightedScore = cappedPct * weight;
+                const achPctVal = r.pct * 100;
+                const achColor = achPctVal >= 90 ? '#10b981' : achPctVal >= 70 ? '#f59e0b' : '#ef4444';
+                return (
+                  <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                    <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{(weight * 100).toFixed(0)}%</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                      <span style={{
+                        display: 'inline-block', padding: '2px 10px', borderRadius: 12,
+                        background: `${achColor}18`, color: achColor, fontWeight: 700, fontSize: 12,
+                      }}>{achPctVal.toFixed(0)}%</span>
+                    </td>
+                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{(weightedScore * 100).toFixed(1)}%</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr style={{ background: 'linear-gradient(135deg, #1a1a2e 0%, #16213e 100%)', color: '#fff' }}>
+                <td style={{ padding: '12px 14px', fontWeight: 800, fontSize: 14, borderRadius: '0 0 0 8px' }}>Overall OKR Score</td>
+                <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 700 }}>{(totalWeight * 100).toFixed(0)}%</td>
+                <td style={{ padding: '12px 14px' }}></td>
+                <td style={{ padding: '12px 14px' }}></td>
+                <td style={{ padding: '12px 14px' }}></td>
+                <td style={{ padding: '12px 14px', textAlign: 'center', fontWeight: 800, fontSize: 18, color: '#E81F76', borderRadius: '0 0 8px 0' }}>{(okrScore * 100).toFixed(1)}%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        {/* Color legend */}
+        <div style={{ display: 'flex', gap: 16, marginTop: 14, fontSize: 11, color: '#64748b', justifyContent: 'center' }}>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#10b981' }} /> ≥ 90% On Track
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#f59e0b' }} /> 70–89% Needs Attention
+          </span>
+          <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+            <span style={{ width: 10, height: 10, borderRadius: '50%', background: '#ef4444' }} /> &lt; 70% At Risk
+          </span>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* ================================================================
    Drill-Down Modal — metric-specific details
    ================================================================ */
 const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTimelinessData, selectedFY }) => {
@@ -1110,6 +1247,7 @@ function DashboardContent() {
 
   const [drillSection, setDrillSection] = useState(null);
   const [showTakeaways, setShowTakeaways] = useState(false);
+  const [showScorecard, setShowScorecard] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
 
@@ -1271,6 +1409,20 @@ function DashboardContent() {
           </>}
         </div>
         <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Balanced Scorecard Button */}
+          {selectedFunction === 'KAM' && data && (
+            <button onClick={() => setShowScorecard(true)} style={{
+              display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
+              border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
+              color: '#E81F76', fontSize: 10, fontWeight: 700, cursor: 'pointer',
+              textTransform: 'uppercase', letterSpacing: 0.5, transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
+              onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
+            >
+              📊 Scorecard
+            </button>
+          )}
           {/* PDF Download Button */}
           <button onClick={handleDownloadPDF} disabled={pdfExporting} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
@@ -1594,6 +1746,24 @@ function DashboardContent() {
           selectedFY={selectedFY} />
       )}
       {showTakeaways && <KeyTakeawaysModal takeaways={takeaways} onClose={() => setShowTakeaways(false)} />}
+      {showScorecard && selectedFunction === 'KAM' && data && (
+        <BalancedScorecardModal
+          onClose={() => setShowScorecard(false)}
+          annualMetrics={annualMetrics}
+          billingTotals={billingTotals}
+          collectionTotals={collectionTotals}
+          quarterlyQBRs={quarterlyQBRs}
+          quarterlyHeroStories={quarterlyHeroStories}
+          quarterlyARR={quarterlyARR}
+          quarterlyServiceRev={quarterlyServiceRev}
+          weightages={weightages}
+          metricAchievements={metricAchievements}
+          billingTimeliness={billingTimeliness.score}
+          collectionTimeliness={collectionTimeliness.score}
+          okrScore={okrScore}
+          selectedFY={selectedFY}
+        />
+      )}
     </div>
   );
 }
