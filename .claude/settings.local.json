@@ -20,7 +20,11 @@
       "Bash(where:*)",
       "Bash(ls:*)",
       "Bash(powershell -Command \"Start-Sleep -Seconds 3; Invoke-WebRequest -Uri 'http://localhost:3001/api/health' -UseBasicParsing | Select-Object -ExpandProperty Content\":*)",
-      "Bash(powershell -Command \"Start-Sleep -Seconds 2; \\(Invoke-WebRequest -Uri ''http://localhost:3001/api/health'' -UseBasicParsing\\).Content\")"
+      "Bash(powershell -Command \"Start-Sleep -Seconds 2; \\(Invoke-WebRequest -Uri ''http://localhost:3001/api/health'' -UseBasicParsing\\).Content\")",
+      "Bash(powershell -Command:*)",
+      "Bash(powershell -File - <<'PSEOF'\nGet-Process node -ErrorAction SilentlyContinue | Stop-Process -Force\nStart-Sleep -Seconds 3\ntry {\n    Rename-Item -Path \"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\kam-dashboard\" -NewName \"dashboard\" -Force -ErrorAction Stop\n    Write-Host \"SUCCESS: Folder renamed\"\n} catch {\n    Write-Host \"FAILED: $\\($_.Exception.Message\\)\"\n}\nPSEOF)",
+      "Bash(cmd /c \"ren \"\"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\kam-dashboard\"\" dashboard\")",
+      "Bash(cmd /c:*)"
     ]
   }
 }
