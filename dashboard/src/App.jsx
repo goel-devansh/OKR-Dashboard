@@ -774,7 +774,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
             <>
               <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>Quarterly Breakdown</h4>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={qData} barGap={8}>
+                <BarChart data={qData} barGap={8} margin={{ top: 18 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
@@ -817,7 +817,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
             <>
               <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>Quarterly Breakdown</h4>
               <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={qData} barGap={8}>
+                <BarChart data={qData} barGap={8} margin={{ top: 18 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
@@ -1101,7 +1101,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
             <>
               <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>Quarterly QBRs Held</h4>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={qbrChartData} barGap={8}>
+                <BarChart data={qbrChartData} barGap={8} margin={{ top: 18 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
