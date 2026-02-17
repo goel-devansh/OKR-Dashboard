@@ -457,56 +457,29 @@ const MiniGauge = ({ value, target, label, color, format = 'percent' }) => {
 };
 
 /* ================================================================
-   On-Time Score Calculator (Timeliness Penalty Logic)
+   On-Time Score Calculator (Simple Average Logic)
 
-   Logic: Each month, if achievement < target, the shortfall carries
-   over and inflates next month's achievement (catching up).
-
-   "On-Time Score" = average of min(monthly_achievement / monthly_target, 1.0)
-   across all months WITH data. This way, if a team does 20/40 one month
-   and 60/40 next month (catching up), they get scored (0.5 + 1.0)/2 = 75%
-   instead of (20+60)/(40+40) = 100%.
-
-   This penalizes delays: the month they missed gets scored low,
-   and excess collection next month is capped at 100% for that month.
+   Logic: For each month with achievement data, compute:
+     monthly % = achievement / target
+   Then the final score = mean of all monthly %s.
+   Months with blank/null achievement are excluded entirely.
    ================================================================ */
 function computeTimelinessScore(monthlyData) {
   const withData = monthlyData.filter(d => d.achievement !== null && d.achievement !== undefined);
-  if (withData.length === 0) return { score: 0, monthlyScores: [], carryover: [] };
+  if (withData.length === 0) return { score: 0, monthlyScores: [] };
 
-  const monthlyScores = [];
-  const carryover = [];
-  let pendingCarryover = 0;
-
-  for (const d of withData) {
-    const target = d.target;
-    const actualNew = Math.max(0, d.achievement - pendingCarryover);
-    const onTimeRatio = target > 0 ? Math.min(actualNew / target, 1.0) : 1.0;
-    const shortfall = Math.max(0, target - d.achievement);
-    const excess = Math.max(0, d.achievement - target);
-
-    // Carryover from previous month reduced by this month's excess
-    const carryoverUsed = Math.min(pendingCarryover, d.achievement);
-
-    monthlyScores.push({
+  const monthlyScores = withData.map(d => {
+    const pct = d.target > 0 ? d.achievement / d.target : 0;
+    return {
       month: d.month,
-      target,
+      target: d.target,
       achievement: d.achievement,
-      onTimeAmount: Math.min(d.achievement, target),
-      carryoverAmount: pendingCarryover > 0 ? Math.min(pendingCarryover, d.achievement) : 0,
-      freshAmount: Math.max(0, d.achievement - (pendingCarryover > 0 ? Math.min(pendingCarryover, d.achievement) : 0)),
-      onTimeScore: onTimeRatio,
-      shortfall,
-      pendingBefore: pendingCarryover,
-    });
-
-    // Update carryover: previous shortfalls minus what was caught up, plus new shortfalls
-    pendingCarryover = Math.max(0, pendingCarryover - excess) + shortfall;
-    carryover.push(pendingCarryover);
-  }
+      onTimeScore: pct,
+    };
+  });
 
   const avgScore = monthlyScores.reduce((s, m) => s + m.onTimeScore, 0) / monthlyScores.length;
-  return { score: avgScore, monthlyScores, carryover };
+  return { score: avgScore, monthlyScores };
 }
 
 /* ================================================================
@@ -530,12 +503,12 @@ function generateTakeaways(annualMetrics, billingTotals, collectionTotals, billi
   else if (annualMetrics.nps.achievementTillDate >= annualMetrics.nps.targetFY26) takeaways.push({ type: 'good', text: `NPS on target at ${annualMetrics.nps.achievementTillDate}` });
 
   // Billing timeliness
-  if (billingTimeliness < 0.6) takeaways.push({ type: 'alert', text: `Billing timeliness is ${(billingTimeliness * 100).toFixed(0)}% — team is frequently billing late and catching up in later months` });
-  else if (billingTimeliness >= 0.8) takeaways.push({ type: 'good', text: `Billing is mostly on-time with ${(billingTimeliness * 100).toFixed(0)}% timeliness score` });
+  if (billingTimeliness < 0.6) takeaways.push({ type: 'alert', text: `Billing score is ${(billingTimeliness * 100).toFixed(0)}% — billing achievement is significantly below targets` });
+  else if (billingTimeliness >= 0.8) takeaways.push({ type: 'good', text: `Billing on track with ${(billingTimeliness * 100).toFixed(0)}% average achievement vs target` });
 
   // Collection timeliness
-  if (collectionTimeliness < 0.6) takeaways.push({ type: 'alert', text: `Collection timeliness at ${(collectionTimeliness * 100).toFixed(0)}% — collections are frequently delayed` });
-  else if (collectionTimeliness >= 0.8) takeaways.push({ type: 'good', text: `Collections happening on-time — ${(collectionTimeliness * 100).toFixed(0)}% timeliness score` });
+  if (collectionTimeliness < 0.6) takeaways.push({ type: 'alert', text: `Collection score is ${(collectionTimeliness * 100).toFixed(0)}% — collection achievement is significantly below targets` });
+  else if (collectionTimeliness >= 0.8) takeaways.push({ type: 'good', text: `Collections on track with ${(collectionTimeliness * 100).toFixed(0)}% average achievement vs target` });
 
   // NDR / GDR
   if (annualMetrics.ndr.achievementTillDate < annualMetrics.ndr.targetFY26) takeaways.push({ type: 'warn', text: `NDR at ${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}% vs target ${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}% — net revenue retention falling short` });
@@ -953,18 +926,15 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
     if (section === 'billing') {
       const data = billingTimelinessData?.monthlyScores || [];
       const avgScore = data.length > 0 ? data.reduce((s, d) => s + d.onTimeScore, 0) / data.length : 0;
-      // Find a good example month — one with carryover to illustrate the penalty
-      const exampleMonth = data.find(d => d.pendingBefore > 0) || data[1] || data[0];
+      const exampleMonth = data[0];
       return (
         <div>
           {/* Explanation box */}
           <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>How Timeliness Score Works</h4>
+            <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>How Billing Score Works</h4>
             <p style={{ fontSize: 12, color: '#475569', lineHeight: 1.6, margin: 0 }}>
-              Each month is scored on how much was billed <strong>on time</strong> (within that month) vs the target.
-              If billing falls short one month and the team catches up next month, the catch-up is <strong>not</strong> credited —
-              only fresh on-time billing counts. The timeliness score is capped at 100% per month,
-              so excess billing doesn't compensate for past delays. This measures <strong>how consistently the team bills on schedule</strong>.
+              Each month's billing score = <strong>Achievement ÷ Target</strong>.
+              The overall score is the <strong>mean of all monthly scores</strong> (excluding months where achievement is blank).
             </p>
           </div>
 
@@ -973,25 +943,15 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
             <h4 style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Actual Calculation</h4>
             <div style={{ fontSize: 12, color: '#1e293b', lineHeight: 1.8 }}>
               <div style={{ marginBottom: 6 }}>
-                <strong>Formula:</strong> Timeliness Score = Average of all monthly on-time scores
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <strong>Monthly On-Time Score</strong> = min( Fresh Billing / Target, 100% )
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <strong>Fresh Billing</strong> = Actual Billing − Carryover from previous month
+                <strong>Formula:</strong> Score = Mean of all monthly (Achievement ÷ Target)
               </div>
               {exampleMonth && (
                 <div style={{ background: '#fff', border: '1px solid #d1fae5', borderRadius: 8, padding: 10, marginTop: 8, marginBottom: 8 }}>
                   <strong>Worked Example — {exampleMonth.month}:</strong>
                   <div style={{ marginTop: 4 }}>
-                    {exampleMonth.pendingBefore > 0 && <div>• Pending carryover from previous month: <strong>{exampleMonth.pendingBefore.toFixed(1)} Cr</strong></div>}
-                    <div>• Target for the month: <strong>{exampleMonth.target} Cr</strong></div>
-                    <div>• Actual billing this month: <strong>{exampleMonth.achievement} Cr</strong></div>
-                    {exampleMonth.pendingBefore > 0 && (
-                      <div>• Fresh billing (after covering carryover): {exampleMonth.achievement} − {Math.min(exampleMonth.pendingBefore, exampleMonth.achievement).toFixed(1)} = <strong>{exampleMonth.freshAmount.toFixed(1)} Cr</strong></div>
-                    )}
-                    <div>• On-Time Score: min({exampleMonth.freshAmount.toFixed(1)} / {exampleMonth.target}, 1.0) = <strong>{(exampleMonth.onTimeScore * 100).toFixed(0)}%</strong></div>
+                    <div>• Target: <strong>{Number(exampleMonth.target).toFixed(1)} Cr</strong></div>
+                    <div>• Achievement: <strong>{Number(exampleMonth.achievement).toFixed(1)} Cr</strong></div>
+                    <div>• Score: {Number(exampleMonth.achievement).toFixed(1)} / {Number(exampleMonth.target).toFixed(1)} = <strong>{(exampleMonth.onTimeScore * 100).toFixed(1)}%</strong></div>
                   </div>
                 </div>
               )}
@@ -1004,31 +964,27 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
           <BillingChart dateRange={[0, 11]} />
           {data.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color: '#1e293b' }}>Monthly Timeliness Breakdown</h4>
+              <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color: '#1e293b' }}>Monthly Billing Breakdown</h4>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
                     <th style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Month</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Target</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Actual</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Pending from Prev</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>On-Time Score</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Achievement</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Score</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((d, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '8px 12px', fontWeight: 600 }}>{d.month}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{d.target} Cr</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{d.achievement} Cr</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', color: d.pendingBefore > 0 ? '#f59e0b' : '#94a3b8' }}>
-                        {d.pendingBefore > 0 ? `${d.pendingBefore.toFixed(1)} Cr` : '—'}
-                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{Number(d.target).toFixed(1)} Cr</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{Number(d.achievement).toFixed(1)} Cr</td>
                       <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                         <span style={{
                           fontWeight: 700, color: getAchievementColor(d.onTimeScore),
                           background: getAchievementColor(d.onTimeScore) + '18', padding: '2px 8px', borderRadius: 8,
-                        }}>{(d.onTimeScore * 100).toFixed(0)}%</span>
+                        }}>{(d.onTimeScore * 100).toFixed(1)}%</span>
                       </td>
                     </tr>
                   ))}
@@ -1040,19 +996,18 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       );
     }
 
-    /* --- Collection Timeliness Drill-Down --- */
+    /* --- Collection Drill-Down --- */
     if (section === 'collection') {
       const data = collectionTimelinessData?.monthlyScores || [];
       const avgScore = data.length > 0 ? data.reduce((s, d) => s + d.onTimeScore, 0) / data.length : 0;
-      const exampleMonth = data.find(d => d.pendingBefore > 0) || data[1] || data[0];
+      const exampleMonth = data[0];
       return (
         <div>
           <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: 14, marginBottom: 16 }}>
-            <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>How Timeliness Score Works</h4>
+            <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>How Collection Score Works</h4>
             <p style={{ fontSize: 12, color: '#475569', lineHeight: 1.6, margin: 0 }}>
-              Each month is scored on how much was collected <strong>on time</strong> vs the target.
-              If collection falls short and the team catches up later, the late collection is <strong>not</strong> credited to the original month.
-              This measures <strong>how consistently the team collects on schedule</strong>, penalizing delays.
+              Each month's collection score = <strong>Achievement ÷ Target</strong>.
+              The overall score is the <strong>mean of all monthly scores</strong> (excluding months where achievement is blank).
             </p>
           </div>
 
@@ -1061,25 +1016,15 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
             <h4 style={{ fontSize: 13, fontWeight: 700, color: '#166534', marginBottom: 8 }}>Actual Calculation</h4>
             <div style={{ fontSize: 12, color: '#1e293b', lineHeight: 1.8 }}>
               <div style={{ marginBottom: 6 }}>
-                <strong>Formula:</strong> Timeliness Score = Average of all monthly on-time scores
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <strong>Monthly On-Time Score</strong> = min( Fresh Collection / Target, 100% )
-              </div>
-              <div style={{ marginBottom: 6 }}>
-                <strong>Fresh Collection</strong> = Actual Collection − Carryover from previous month
+                <strong>Formula:</strong> Score = Mean of all monthly (Achievement ÷ Target)
               </div>
               {exampleMonth && (
                 <div style={{ background: '#fff', border: '1px solid #d1fae5', borderRadius: 8, padding: 10, marginTop: 8, marginBottom: 8 }}>
                   <strong>Worked Example — {exampleMonth.month}:</strong>
                   <div style={{ marginTop: 4 }}>
-                    {exampleMonth.pendingBefore > 0 && <div>• Pending carryover from previous month: <strong>{exampleMonth.pendingBefore.toFixed(1)} Cr</strong></div>}
-                    <div>• Target for the month: <strong>{exampleMonth.target} Cr</strong></div>
-                    <div>• Actual collection this month: <strong>{exampleMonth.achievement} Cr</strong></div>
-                    {exampleMonth.pendingBefore > 0 && (
-                      <div>• Fresh collection (after covering carryover): {exampleMonth.achievement} − {Math.min(exampleMonth.pendingBefore, exampleMonth.achievement).toFixed(1)} = <strong>{exampleMonth.freshAmount.toFixed(1)} Cr</strong></div>
-                    )}
-                    <div>• On-Time Score: min({exampleMonth.freshAmount.toFixed(1)} / {exampleMonth.target}, 1.0) = <strong>{(exampleMonth.onTimeScore * 100).toFixed(0)}%</strong></div>
+                    <div>• Target: <strong>{Number(exampleMonth.target).toFixed(1)} Cr</strong></div>
+                    <div>• Achievement: <strong>{Number(exampleMonth.achievement).toFixed(1)} Cr</strong></div>
+                    <div>• Score: {Number(exampleMonth.achievement).toFixed(1)} / {Number(exampleMonth.target).toFixed(1)} = <strong>{(exampleMonth.onTimeScore * 100).toFixed(1)}%</strong></div>
                   </div>
                 </div>
               )}
@@ -1092,31 +1037,27 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
           <CollectionChart dateRange={[0, 11]} />
           {data.length > 0 && (
             <div style={{ marginTop: 16 }}>
-              <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color: '#1e293b' }}>Monthly Timeliness Breakdown</h4>
+              <h4 style={{ fontSize: 14, fontWeight: 700, marginBottom: 10, color: '#1e293b' }}>Monthly Collection Breakdown</h4>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
                 <thead>
                   <tr style={{ background: '#f8fafc' }}>
                     <th style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Month</th>
                     <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Target</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Actual</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Pending from Prev</th>
-                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>On-Time Score</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Achievement</th>
+                    <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>Score</th>
                   </tr>
                 </thead>
                 <tbody>
                   {data.map((d, i) => (
                     <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
                       <td style={{ padding: '8px 12px', fontWeight: 600 }}>{d.month}</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{d.target} Cr</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{d.achievement} Cr</td>
-                      <td style={{ padding: '8px 12px', textAlign: 'right', color: d.pendingBefore > 0 ? '#f59e0b' : '#94a3b8' }}>
-                        {d.pendingBefore > 0 ? `${d.pendingBefore.toFixed(1)} Cr` : '—'}
-                      </td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{Number(d.target).toFixed(1)} Cr</td>
+                      <td style={{ padding: '8px 12px', textAlign: 'right' }}>{Number(d.achievement).toFixed(1)} Cr</td>
                       <td style={{ padding: '8px 12px', textAlign: 'right' }}>
                         <span style={{
                           fontWeight: 700, color: getAchievementColor(d.onTimeScore),
                           background: getAchievementColor(d.onTimeScore) + '18', padding: '2px 8px', borderRadius: 8,
-                        }}>{(d.onTimeScore * 100).toFixed(0)}%</span>
+                        }}>{(d.onTimeScore * 100).toFixed(1)}%</span>
                       </td>
                     </tr>
                   ))}

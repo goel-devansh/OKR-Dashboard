@@ -124,7 +124,10 @@ function parseExcelData(filePath) {
   }
 
   try {
-    const workbook = XLSX.readFile(filePath);
+    // Read file into buffer first to avoid holding a file lock
+    // This lets Excel / OneDrive save the file while the server is running
+    const fileBuffer = fs.readFileSync(filePath);
+    const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     const data = {};
 
     // ── 1. Annual KPIs ──
