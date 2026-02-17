@@ -572,7 +572,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
   weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY }) => {
 
   const fmt = (v, type) => {
-    if (type === 'cr') return `₹${(v / 10000000).toFixed(1)} Cr`;
+    if (type === 'cr') return `₹${Number(v).toFixed(1)} Cr`;
     if (type === 'pct') return `${(v * 100).toFixed(0)}%`;
     if (type === 'num') return String(Math.round(v));
     if (type === 'score') return `${(v * 100).toFixed(0)}%`;
@@ -580,30 +580,33 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
   };
 
   // Build rows from live data
-  const arrTarget = annualMetrics.arr?.targetFY26 || 0;
-  const arrAch = annualMetrics.arr?.achievementTillDate || 0;
-  const srvTarget = annualMetrics.serviceRev?.targetFY26 || 0;
-  const srvAch = annualMetrics.serviceRev?.achievementTillDate || 0;
+  // ARR & Service Rev: compute from quarterly arrays (most reliable source)
+  const arrTarget = (quarterlyARR || []).reduce((s, q) => s + (q.target || 0), 0);
+  const arrAch = (quarterlyARR || []).reduce((s, q) => s + (q.achievement || 0), 0);
+  const srvTarget = (quarterlyServiceRev || []).reduce((s, q) => s + (q.target || 0), 0);
+  const srvAch = (quarterlyServiceRev || []).reduce((s, q) => s + (q.achievement || 0), 0);
+  // Billing & Collection totals
   const billingTarget = billingTotals?.totalTarget || 0;
   const billingAch = billingTotals?.totalAchievement || 0;
   const collTarget = collectionTotals?.totalTarget || 0;
   const collAch = collectionTotals?.totalAchievement || 0;
-  const ndrTarget = annualMetrics.ndr?.targetFY26 || 0;
-  const ndrAch = annualMetrics.ndr?.achievementTillDate || 0;
-  const gdrTarget = annualMetrics.gdr?.targetFY26 || 0;
-  const gdrAch = annualMetrics.gdr?.achievementTillDate || 0;
-  const npsTarget = annualMetrics.nps?.targetFY26 || 0;
-  const npsAch = annualMetrics.nps?.achievementTillDate || 0;
-  const qbrAchTotal = quarterlyQBRs.reduce((s, q) => s + q.achievement, 0);
-  const qbrTarTotal = quarterlyQBRs.reduce((s, q) => s + q.target, 0);
-  const heroAchTotal = quarterlyHeroStories.reduce((s, q) => s + q.achievement, 0);
-  const heroTarTotal = quarterlyHeroStories.reduce((s, q) => s + q.target, 0);
+  // Other metrics from annualMetrics
+  const ndrTarget = annualMetrics?.ndr?.targetFY26 || 0;
+  const ndrAch = annualMetrics?.ndr?.achievementTillDate || 0;
+  const gdrTarget = annualMetrics?.gdr?.targetFY26 || 0;
+  const gdrAch = annualMetrics?.gdr?.achievementTillDate || 0;
+  const npsTarget = annualMetrics?.nps?.targetFY26 || 0;
+  const npsAch = annualMetrics?.nps?.achievementTillDate || 0;
+  const qbrAchTotal = (quarterlyQBRs || []).reduce((s, q) => s + q.achievement, 0);
+  const qbrTarTotal = (quarterlyQBRs || []).reduce((s, q) => s + q.target, 0);
+  const heroAchTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.achievement, 0);
+  const heroTarTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.target, 0);
 
   const rows = [
     { label: 'Annual Recurring Revenue (ARR)', key: 'arr', target: fmt(arrTarget, 'cr'), achievement: fmt(arrAch, 'cr'), pct: metricAchievements.arr },
     { label: 'Service Revenue', key: 'serviceRev', target: fmt(srvTarget, 'cr'), achievement: fmt(srvAch, 'cr'), pct: metricAchievements.serviceRev },
-    { label: 'On-Time Billing', key: 'billing', target: fmt(billingTarget, 'cr'), achievement: fmt(billingAch, 'cr'), pct: billingTimeliness },
-    { label: 'On-Time Collection', key: 'collection', target: fmt(collTarget, 'cr'), achievement: fmt(collAch, 'cr'), pct: collectionTimeliness },
+    { label: 'On-Time Billing', key: 'billing', target: `₹${billingTarget} Cr`, achievement: `₹${billingAch} Cr`, pct: billingTimeliness },
+    { label: 'On-Time Collection', key: 'collection', target: `₹${collTarget} Cr`, achievement: `₹${collAch} Cr`, pct: collectionTimeliness },
     { label: 'Net Dollar Retention (NDR)', key: 'ndr', target: `${(ndrTarget * 100).toFixed(0)}%`, achievement: `${(ndrAch * 100).toFixed(0)}%`, pct: metricAchievements.ndr },
     { label: 'Gross Dollar Retention (GDR)', key: 'gdr', target: `${(gdrTarget * 100).toFixed(0)}%`, achievement: `${(gdrAch * 100).toFixed(0)}%`, pct: metricAchievements.gdr },
     { label: 'NPS Score', key: 'nps', target: String(Math.round(npsTarget)), achievement: String(Math.round(npsAch)), pct: metricAchievements.nps },
