@@ -400,8 +400,8 @@ const MiniLegend = ({ items }) => (
    ================================================================ */
 const BarLabel = ({ x, y, width, value, fill }) => {
   if (value === 0 || value === null || value === undefined) return null;
-  const displayVal = typeof value === 'number' && value >= 1
-    ? (value >= 100 ? Math.round(value) : value.toFixed(1))
+  const displayVal = typeof value === 'number'
+    ? (Math.abs(value) >= 100 ? Math.round(value) : Number(value).toFixed(1))
     : value;
   return (
     <text x={x + width / 2} y={y - 3} textAnchor="middle" fontSize={7} fontWeight="700"
@@ -633,8 +633,8 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
   const rows = [
     { label: 'Annual Recurring Revenue (ARR)', key: 'arr', target: fmt(arrTarget, 'cr'), achievement: fmt(arrAch, 'cr'), pct: metricAchievements.arr },
     { label: 'Service Revenue', key: 'serviceRev', target: fmt(srvTarget, 'cr'), achievement: fmt(srvAch, 'cr'), pct: metricAchievements.serviceRev },
-    { label: 'On-Time Billing', key: 'billing', target: `₹${billingTarget} Cr`, achievement: `₹${billingAch} Cr`, pct: billingTimeliness },
-    { label: 'On-Time Collection', key: 'collection', target: `₹${collTarget} Cr`, achievement: `₹${collAch} Cr`, pct: collectionTimeliness },
+    { label: 'On-Time Billing', key: 'billing', target: fmt(billingTarget, 'cr'), achievement: fmt(billingAch, 'cr'), pct: billingTimeliness },
+    { label: 'On-Time Collection', key: 'collection', target: fmt(collTarget, 'cr'), achievement: fmt(collAch, 'cr'), pct: collectionTimeliness },
     { label: 'Net Dollar Retention (NDR)', key: 'ndr', target: `${(ndrTarget * 100).toFixed(0)}%`, achievement: `${(ndrAch * 100).toFixed(0)}%`, pct: metricAchievements.ndr },
     { label: 'Gross Dollar Retention (GDR)', key: 'gdr', target: `${(gdrTarget * 100).toFixed(0)}%`, achievement: `${(gdrAch * 100).toFixed(0)}%`, pct: metricAchievements.gdr },
     { label: 'NPS Score', key: 'nps', target: String(Math.round(npsTarget)), achievement: String(Math.round(npsAch)), pct: metricAchievements.nps },
@@ -790,11 +790,11 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
             </div>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achieved YTD</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(m.achievementTillDate / m.targetFY26) }}>{formatCrore(m.achievementTillDate, 2)}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(m.achievementTillDate / m.targetFY26) }}>{formatCrore(m.achievementTillDate, 1)}</div>
             </div>
             <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
               <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Gap to Target</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444' }}>{formatCrore(m.targetFY26 - m.achievementTillDate, 2)}</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444' }}>{formatCrore(m.targetFY26 - m.achievementTillDate, 1)}</div>
             </div>
           </div>
           {qData.length > 0 && (
@@ -805,7 +805,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <Tooltip formatter={(v) => formatCrore(v, 2)} />
+                  <Tooltip formatter={(v) => formatCrore(v, 1)} />
                   <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} />
                   <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
                     {qData.map((entry, i) => (
@@ -1164,7 +1164,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <Tooltip formatter={(v) => [v, '']} />
+                  <Tooltip formatter={(v) => [Number(v).toFixed(1), '']} />
                   <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} />
                   <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
                     {qbrChartData.map((entry, i) => (
@@ -1228,7 +1228,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <Tooltip formatter={(v) => [v, '']} />
+                  <Tooltip formatter={(v) => [Number(v).toFixed(1), '']} />
                   <Bar dataKey="target" name="Target" fill="#fde68a" radius={[4, 4, 0, 0]} barSize={35} />
                   <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
                     {heroChartData.map((entry, i) => (
@@ -1734,7 +1734,7 @@ function DashboardContent() {
         }}>
 
           {/* 1. ARR */}
-          <MetricSummaryCard title="ARR" value={formatCrore(annualMetrics.arr.achievementTillDate, 2)}
+          <MetricSummaryCard title="ARR" value={formatCrore(annualMetrics.arr.achievementTillDate, 1)}
             target={annualMetrics.arr.targetFY26.toFixed(1)} unit="Cr"
             achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
           >
@@ -1747,7 +1747,7 @@ function DashboardContent() {
                       tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
                     <Tooltip
                       contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                      formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Actual']}
+                      formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Actual']}
                       labelFormatter={(l) => l}
                     />
                     <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
@@ -1775,7 +1775,7 @@ function DashboardContent() {
                       tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
                     <Tooltip
                       contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                      formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Actual']}
+                      formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Actual']}
                       labelFormatter={(l) => l}
                     />
                     <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
@@ -1914,7 +1914,7 @@ function DashboardContent() {
                     tickFormatter={(v) => v.substring(0, 3)} interval={1} />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Billed']}
+                    formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Billed']}
                     labelFormatter={(l) => `${l}`}
                   />
                   <Area type="monotone" dataKey="achievement" stroke="#6366f1" strokeWidth={1.5} fill="url(#sparkBill)" dot={false} activeDot={{ r: 3, fill: '#6366f1' }} name="achievement" />
@@ -1944,7 +1944,7 @@ function DashboardContent() {
                     tickFormatter={(v) => v.substring(0, 3)} interval={1} />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [`${v} Cr`, name === 'target' ? 'Target' : 'Collected']}
+                    formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Collected']}
                     labelFormatter={(l) => `${l}`}
                   />
                   <Area type="monotone" dataKey="achievement" stroke="#06b6d4" strokeWidth={1.5} fill="url(#sparkColl)" dot={false} activeDot={{ r: 3, fill: '#06b6d4' }} name="achievement" />
@@ -1967,7 +1967,7 @@ function DashboardContent() {
                   <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
                   <Tooltip
                     contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [v, name === 'qbrTarget' ? 'Target' : 'QBRs']}
+                    formatter={(v, name) => [Number(v).toFixed(1), name === 'qbrTarget' ? 'Target' : 'QBRs']}
                     labelFormatter={(l) => l}
                   />
                   <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />

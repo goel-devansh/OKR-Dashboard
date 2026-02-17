@@ -5,7 +5,7 @@
 /**
  * Format number as INR Crore
  */
-export const formatCrore = (value, decimals = 2) => {
+export const formatCrore = (value, decimals = 1) => {
   if (value === null || value === undefined) return '—';
   return `₹${Number(value).toFixed(decimals)} Cr`;
 };

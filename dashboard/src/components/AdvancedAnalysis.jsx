@@ -241,7 +241,7 @@ const AdvancedAnalysis = () => {
             <span className="insight-icon">📊</span>
             <div>
               <strong>YTD Billing at {(billingTotals.achievementPercentage * 100).toFixed(0)}%</strong>
-              <p>Achieved ₹{billingTotals.totalAchievement} Cr out of ₹{billingTotals.totalTarget} Cr target. Need ₹{(billingTotals.totalTarget - billingTotals.totalAchievement).toFixed(0)} Cr more in remaining months.</p>
+              <p>Achieved ₹{Number(billingTotals.totalAchievement).toFixed(1)} Cr out of ₹{Number(billingTotals.totalTarget).toFixed(1)} Cr target. Need ₹{(billingTotals.totalTarget - billingTotals.totalAchievement).toFixed(1)} Cr more in remaining months.</p>
             </div>
           </div>
           <div className="insight-item">

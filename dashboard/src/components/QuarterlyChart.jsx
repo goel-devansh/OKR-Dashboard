@@ -15,7 +15,7 @@ const CustomTooltip = ({ active, payload, label }) => {
       {payload.map((entry, i) => (
         <div key={i} className="tooltip-row">
           <span className="tooltip-dot" style={{ background: entry.color }} />
-          {entry.name}: {entry.value}
+          {entry.name}: {typeof entry.value === 'number' ? Number(entry.value).toFixed(1) : entry.value}
         </div>
       ))}
     </div>
