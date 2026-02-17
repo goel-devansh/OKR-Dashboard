@@ -779,8 +779,8 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <Tooltip formatter={(v) => formatCrore(v, 1)} />
-                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} />
-                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
+                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#a5b4c8" />} />
+                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel />}>
                     {qData.map((entry, i) => (
                       <Cell key={i} fill={getAchievementColor(entry.percentage)} />
                     ))}
@@ -822,8 +822,8 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <Tooltip formatter={(v) => formatCrore(v, 1)} />
-                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} />
-                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
+                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#a5b4c8" />} />
+                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel />}>
                     {qData.map((entry, i) => (
                       <Cell key={i} fill={getAchievementColor(entry.percentage)} />
                     ))}
@@ -1106,8 +1106,8 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <Tooltip formatter={(v) => [Number(v).toFixed(1), '']} />
-                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} />
-                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
+                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#a5b4c8" />} />
+                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel />}>
                     {qbrChartData.map((entry, i) => (
                       <Cell key={i} fill={getAchievementColor(entry.percentage)} />
                     ))}
@@ -1481,7 +1481,7 @@ function DashboardContent() {
   /* ---------- All metric tiles ---------- */
   const metricTiles = [
     { key: 'arr', label: 'ARR', achievement: metricAchievements.arr, weight: weightages.arr?.weight || 0, drill: 'arr' },
-    { key: 'serviceRev', label: 'Service Rev', achievement: metricAchievements.serviceRev, weight: weightages.serviceRev?.weight || 0, drill: 'serviceRev' },
+    { key: 'serviceRev', label: 'Service Revenue', achievement: metricAchievements.serviceRev, weight: weightages.serviceRev?.weight || 0, drill: 'serviceRev' },
     { key: 'pipelineCoverage', label: 'Pipeline Coverage', achievement: metricAchievements.pipelineCoverage, weight: weightages.pipelineCoverage?.weight || 0, drill: 'pipelineCoverage', isCoverage: true },
     { key: 'ndr', label: 'NDR', achievement: metricAchievements.ndr, weight: weightages.ndr?.weight || 0, drill: 'ndr' },
     { key: 'gdr', label: 'GDR', achievement: metricAchievements.gdr, weight: weightages.gdr?.weight || 0, drill: 'gdr' },
@@ -1490,7 +1490,7 @@ function DashboardContent() {
     { key: 'collection', label: 'Collection (Timeliness)', achievement: metricAchievements.collection, weight: weightages.collection?.weight || 0, drill: 'collection' },
     { key: 'qbr', label: 'QBRs Held', achievement: metricAchievements.qbr, weight: weightages.qbr?.weight || 0, drill: 'qbr' },
     { key: 'heroStories', label: 'Hero Stories', achievement: metricAchievements.heroStories, weight: weightages.heroStories?.weight || 0, drill: 'heroStories' },
-  ];
+  ].sort((a, b) => b.weight - a.weight);
 
   /* ---------- Helper for sparkline data ---------- */
   const qbrCombined = quarterlyQBRs.map((q, i) => ({
