@@ -301,9 +301,9 @@ const MetricTile = ({ label, achievement, weight, onClick, isCoverage }) => {
     const covColor = achievement >= 3 ? '#10b981' : achievement >= 1 ? '#f59e0b' : '#ef4444';
     const barPct = Math.min(achievement / 5 * 100, 100); // 5x = full bar
     return (
-      <div style={{
+      <div onClick={onClick} style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
-        background: 'rgba(255,255,255,0.04)', transition: 'background 0.2s',
+        cursor: onClick ? 'pointer' : 'default', background: 'rgba(255,255,255,0.04)', transition: 'background 0.2s',
         borderLeft: `3px solid ${covColor}`,
       }}
         onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.08)'; }}
