@@ -5,10 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "start": "vite build && node server.cjs",
+    "start": "node generateStaticData.cjs && vite build && node server.cjs",
     "server": "node server.cjs",
     "generate-template": "node generate-template.cjs",
-    "build": "vite build",
+    "generate-data": "node generateStaticData.cjs",
+    "build": "node generateStaticData.cjs && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
