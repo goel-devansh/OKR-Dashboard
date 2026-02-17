@@ -322,7 +322,11 @@ function parseExcelData(filePath) {
     console.log(`Excel parsed successfully: ${path.basename(filePath)} at ${new Date().toLocaleTimeString()}`);
     return data;
   } catch (err) {
-    console.error(`Error parsing Excel (${path.basename(filePath)}):`, err.message);
+    if (err.code === 'EBUSY' || (err.message && err.message.includes('EBUSY'))) {
+      console.error(`  ⚠️  File locked (Excel open?): ${path.basename(filePath)} — will retry`);
+    } else {
+      console.error(`  Error parsing Excel (${path.basename(filePath)}):`, err.message);
+    }
     return null;
   }
 }
@@ -604,13 +608,26 @@ function watchFile(filePath) {
           return;
         }
 
-        const newData = parseExcelData(filePath);
-        if (newData) {
-          if (!cachedData[func]) cachedData[func] = {};
-          cachedData[func][fy] = newData;
-          broadcastFYUpdate(func, fy);
-          broadcastYears(func);
-        }
+        // Retry logic: Excel on Windows locks the file while open,
+        // so XLSX.readFile() may fail with EBUSY. Retry up to 3 times.
+        let retries = 0;
+        const maxRetries = 3;
+        const tryParse = () => {
+          const newData = parseExcelData(filePath);
+          if (newData) {
+            if (!cachedData[func]) cachedData[func] = {};
+            cachedData[func][fy] = newData;
+            broadcastFYUpdate(func, fy);
+            broadcastYears(func);
+          } else if (retries < maxRetries) {
+            retries++;
+            console.log(`  ⏳ File may be locked by Excel, retrying (${retries}/${maxRetries})...`);
+            setTimeout(tryParse, retries * 1000);
+          } else {
+            console.log(`  ❌ Could not read file after ${maxRetries} retries — is Excel still open? Close and re-save.`);
+          }
+        };
+        tryParse();
       }, 1500);
     }
   });
