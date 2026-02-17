@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { KamDataProvider, useKamDataContext } from './data/KamDataContext';
 import BillingChart from './components/BillingChart';
 import CollectionChart from './components/CollectionChart';
@@ -731,10 +731,75 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
    Drill-Down Modal — metric-specific details
    ================================================================ */
 const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTimelinessData, selectedFY }) => {
+  const [subView, setSubView] = useState('overall');
+  useEffect(() => setSubView('overall'), [section]);
+
   if (!section) return null;
   const ctx = useKamDataContext();
   const { annualMetrics, monthlyBilling, monthlyCollection, quarterlyQBRs, quarterlyHeroStories,
-    billingTotals, collectionTotals, quarterlyARR, quarterlyServiceRev, pipelineCoverage } = ctx;
+    billingTotals, collectionTotals, quarterlyARR, quarterlyServiceRev, pipelineCoverage, accountOwnerPerformance } = ctx;
+
+  /* Toggle buttons for sections that support Account Owner view */
+  const hasOwnerView = section === 'arr' || section === 'billing' || section === 'collection';
+  const ViewToggle = () => hasOwnerView ? (
+    <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+      {[['overall', 'Overall'], ['byOwner', 'By Account Owner']].map(([key, label]) => (
+        <button key={key} onClick={() => setSubView(key)} style={{
+          padding: '6px 16px', borderRadius: 8, border: 'none', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+          background: subView === key ? '#E81F76' : '#f1f5f9',
+          color: subView === key ? '#fff' : '#64748b', transition: 'all 0.2s',
+        }}>{label}</button>
+      ))}
+    </div>
+  ) : null;
+
+  /* Reusable Account Owner horizontal bar chart + table */
+  const OwnerBreakdown = ({ dataKey, label, unit = 'Cr' }) => {
+    const owners = [...(accountOwnerPerformance || [])].sort((a, b) => b[dataKey] - a[dataKey]);
+    const total = owners.reduce((s, o) => s + o[dataKey], 0);
+    return (
+      <div>
+        <div style={{ background: '#f8fafc', borderRadius: 10, padding: 14, marginBottom: 16, textAlign: 'center' }}>
+          <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Total {label} (All Owners)</div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>₹{Number(total).toFixed(1)} {unit}</div>
+        </div>
+        <ResponsiveContainer width="100%" height={Math.max(280, owners.length * 36)}>
+          <BarChart data={owners} layout="vertical" margin={{ top: 5, right: 50, bottom: 5, left: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" horizontal={false} />
+            <XAxis type="number" tick={{ fontSize: 11, fill: '#6b7280' }} tickFormatter={(v) => `${v}`} />
+            <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fill: '#374151' }} width={120} />
+            <Tooltip formatter={(v) => [`₹${Number(v).toFixed(1)} ${unit}`, label]} />
+            <Bar dataKey={dataKey} name={label} radius={[0, 4, 4, 0]} barSize={20}
+              label={{ position: 'right', fontSize: 10, fontWeight: 700, fill: '#64748b', formatter: (v) => `₹${Math.abs(Number(v)).toFixed(1)}` }}>
+              {owners.map((entry, i) => (
+                <Cell key={i} fill={entry[dataKey] >= 0 ? '#6366f1' : '#ef4444'} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
+        <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 16 }}>
+          <thead>
+            <tr style={{ background: '#f8fafc' }}>
+              <th style={{ padding: '8px 12px', textAlign: 'left', color: '#64748b', fontWeight: 600 }}>Account Owner</th>
+              <th style={{ padding: '8px 12px', textAlign: 'right', color: '#64748b', fontWeight: 600 }}>{label} (₹ {unit})</th>
+            </tr>
+          </thead>
+          <tbody>
+            {owners.map((o, i) => (
+              <tr key={i} style={{ borderBottom: '1px solid #f1f5f9' }}>
+                <td style={{ padding: '8px 12px', fontWeight: 600 }}>{o.name}</td>
+                <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                  <span style={{ fontWeight: 700, color: o[dataKey] >= 0 ? '#1e293b' : '#ef4444' }}>
+                    {o[dataKey] < 0 ? '−' : ''}₹{Math.abs(o[dataKey]).toFixed(1)} {unit}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    );
+  };
 
   const titles = {
     billing: 'On-Time Billing — Timeliness Analysis',
@@ -756,38 +821,45 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const qData = quarterlyARR || [];
       return (
         <div>
-          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
-            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{formatCrore(m.targetFY26, 1)}</div>
-            </div>
-            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achieved YTD</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(m.achievementTillDate / m.targetFY26) }}>{formatCrore(m.achievementTillDate, 1)}</div>
-            </div>
-            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Gap to Target</div>
-              <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444' }}>{formatCrore(m.targetFY26 - m.achievementTillDate, 1)}</div>
-            </div>
-          </div>
-          {qData.length > 0 && (
+          <ViewToggle />
+          {subView === 'overall' ? (
             <>
-              <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>Quarterly Breakdown</h4>
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={qData} barGap={8} margin={{ top: 18 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
-                  <Tooltip formatter={(v) => formatCrore(v, 1)} />
-                  <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#a5b4c8" />} />
-                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel />}>
-                    {qData.map((entry, i) => (
-                      <Cell key={i} fill={getAchievementColor(entry.percentage)} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
+              <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{formatCrore(m.targetFY26, 1)}</div>
+                </div>
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achieved YTD</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(m.achievementTillDate / m.targetFY26) }}>{formatCrore(m.achievementTillDate, 1)}</div>
+                </div>
+                <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Gap to Target</div>
+                  <div style={{ fontSize: 24, fontWeight: 800, color: '#ef4444' }}>{formatCrore(m.targetFY26 - m.achievementTillDate, 1)}</div>
+                </div>
+              </div>
+              {qData.length > 0 && (
+                <>
+                  <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>Quarterly Breakdown</h4>
+                  <ResponsiveContainer width="100%" height={280}>
+                    <BarChart data={qData} barGap={8} margin={{ top: 18 }}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                      <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                      <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
+                      <Tooltip formatter={(v) => formatCrore(v, 1)} />
+                      <Bar dataKey="target" name="Target" fill="#c7d2fe" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#a5b4c8" />} />
+                      <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel />}>
+                        {qData.map((entry, i) => (
+                          <Cell key={i} fill={getAchievementColor(entry.percentage)} />
+                        ))}
+                      </Bar>
+                    </BarChart>
+                  </ResponsiveContainer>
+                </>
+              )}
             </>
+          ) : (
+            <OwnerBreakdown dataKey="arrAchievement" label="ARR Achievement" />
           )}
         </div>
       );
@@ -929,6 +1001,9 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const exampleMonth = data[0];
       return (
         <div>
+          <ViewToggle />
+          {subView === 'overall' ? (
+          <>
           {/* Explanation box */}
           <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: 14, marginBottom: 16 }}>
             <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>How Billing Score Works</h4>
@@ -992,6 +1067,10 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
               </table>
             </div>
           )}
+          </>
+          ) : (
+            <OwnerBreakdown dataKey="billing" label="Billing" />
+          )}
         </div>
       );
     }
@@ -1003,6 +1082,9 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       const exampleMonth = data[0];
       return (
         <div>
+          <ViewToggle />
+          {subView === 'overall' ? (
+          <>
           <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: 14, marginBottom: 16 }}>
             <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 6 }}>How Collection Score Works</h4>
             <p style={{ fontSize: 12, color: '#475569', lineHeight: 1.6, margin: 0 }}>
@@ -1064,6 +1146,10 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                 </tbody>
               </table>
             </div>
+          )}
+          </>
+          ) : (
+            <OwnerBreakdown dataKey="collection" label="Collection" />
           )}
         </div>
       );

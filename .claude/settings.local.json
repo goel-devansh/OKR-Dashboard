@@ -29,7 +29,11 @@
       "Bash(python:*)",
       "Bash(del \"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\dashboard\\\\KAM_Dashboard_Input.xlsx\")",
       "Bash(powershell -command \"Get-ChildItem KAM_Dashboard_FY26.xlsx | Select-Object Name, LastWriteTime, Length | Format-List\")",
-      "Bash(powershell -command:*)"
+      "Bash(powershell -command:*)",
+      "Bash(taskkill:*)",
+      "Bash(start:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)"
     ]
   }
 }
