@@ -26,6 +26,10 @@ const FALLBACK_FY = 'FY26';
 app.use(cors());
 app.use(express.json());
 
+// ─── Serve built frontend (Vite outputs to parent directory) ──
+const STATIC_DIR = path.resolve(__dirname, '..');
+app.use(express.static(STATIC_DIR));
+
 // ─── Multi-Function + Multi-FY Data Store ────────────────────
 // { KAM: { FY26: {...data...}, FY27: {...} }, SALES: { FY26: {...} } }
 let cachedData = {};
@@ -661,20 +665,36 @@ function watchAllFiles() {
   });
 }
 
+// ─── SPA Catch-All: serve index.html for non-API routes ──────
+// Express 5 uses path-to-regexp v8+ which requires named params for wildcards
+app.get('/{*path}', (req, res) => {
+  const indexPath = path.join(STATIC_DIR, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    res.sendFile(indexPath);
+  } else {
+    res.status(404).send('Dashboard not built yet. Run: npm run build');
+  }
+});
+
 // ─── Start Server ────────────────────────────────────────────
 server.listen(PORT, () => {
   const funcs = getAvailableFunctions();
   const allFiles = discoverAllFiles();
+  const hasBuilt = fs.existsSync(path.join(STATIC_DIR, 'index.html'));
 
   console.log('');
   console.log('========================================================');
-  console.log('    Dashboard Backend Server (Multi-Function + Multi-FY) ');
+  console.log('    Dashboard Server (API + Frontend + Live Updates)     ');
   console.log('========================================================');
-  console.log(`  API:        http://localhost:${PORT}/api/data?function=KAM&fy=FY26`);
-  console.log(`  Functions:  http://localhost:${PORT}/api/functions`);
-  console.log(`  Years API:  http://localhost:${PORT}/api/years?function=KAM`);
-  console.log(`  WebSocket:  ws://localhost:${PORT}`);
-  console.log(`  Health:     http://localhost:${PORT}/api/health`);
+  console.log(`  🌐 Dashboard:  http://localhost:${PORT}`);
+  console.log(`  API:           http://localhost:${PORT}/api/data?function=KAM&fy=FY26`);
+  console.log(`  WebSocket:     ws://localhost:${PORT}`);
+  console.log(`  Health:        http://localhost:${PORT}/api/health`);
+  if (!hasBuilt) {
+    console.log('');
+    console.log('  ⚠️  Frontend not built yet! Run: npm run build');
+    console.log('  (Or use: npm start — builds + starts server)');
+  }
   console.log('--------------------------------------------------------');
   if (funcs.length > 0) {
     console.log(`  Functions:     ${funcs.join(', ')}`);

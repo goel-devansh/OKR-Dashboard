@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "start": "vite build && node server.cjs",
     "server": "node server.cjs",
     "generate-template": "node generate-template.cjs",
     "build": "vite build",

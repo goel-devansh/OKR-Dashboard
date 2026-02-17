@@ -761,7 +761,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
   if (!section) return null;
   const ctx = useKamDataContext();
   const { annualMetrics, monthlyBilling, monthlyCollection, quarterlyQBRs, quarterlyHeroStories,
-    billingTotals, collectionTotals, quarterlyARR, quarterlyServiceRev } = ctx;
+    billingTotals, collectionTotals, quarterlyARR, quarterlyServiceRev, pipelineCoverage } = ctx;
 
   const titles = {
     billing: 'On-Time Billing — Timeliness Analysis',
@@ -773,6 +773,7 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
     gdr: 'Gross Dollar Retention (GDR)',
     nps: 'NPS Score',
     heroStories: 'Hero Stories — Quarterly Breakdown',
+    pipelineCoverage: 'Pipeline Coverage — Open Pipeline vs Remaining Target',
   };
 
   const renderContent = () => {
@@ -1255,6 +1256,135 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       );
     }
 
+    /* --- Pipeline Coverage Drill-Down --- */
+    if (section === 'pipelineCoverage') {
+      const pc = pipelineCoverage || { openPipeline: 0, remainingTarget: 0, coverage: 0 };
+      const arrTarget = (quarterlyARR || []).reduce((s, q) => s + (q.target || 0), 0);
+      const arrAch = (quarterlyARR || []).reduce((s, q) => s + (q.achievement || 0), 0);
+      const covColor = pc.coverage >= 3 ? '#10b981' : pc.coverage >= 1 ? '#f59e0b' : '#ef4444';
+      const benchmark3x = pc.remainingTarget * 3;
+
+      // Donut chart: show Open Pipeline as filled, gap (if any) as grey
+      // If pipeline > benchmark, show pipeline as full ring + excess indicator
+      const pipelineTotal = Math.max(pc.openPipeline, benchmark3x, 1);
+      const donutData = pc.openPipeline >= benchmark3x
+        ? [
+            { name: 'Benchmark (3x)', value: benchmark3x, fill: covColor },
+            { name: 'Surplus', value: pc.openPipeline - benchmark3x, fill: '#6ee7b7' },
+          ]
+        : [
+            { name: 'Open Pipeline', value: pc.openPipeline, fill: covColor },
+            { name: 'Gap to 3x', value: benchmark3x - pc.openPipeline, fill: '#e2e8f0' },
+          ];
+
+      return (
+        <div>
+          {/* Stat cards */}
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 20 }}>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Open Pipeline</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>₹{pc.openPipeline.toFixed(0)} Cr</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Remaining ARR Target</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#64748b' }}>₹{pc.remainingTarget.toFixed(1)} Cr</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Coverage Ratio</div>
+              <div style={{ fontSize: 28, fontWeight: 900, color: covColor }}>{pc.coverage.toFixed(1)}x</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Benchmark</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#0ea5e9' }}>3.0x</div>
+            </div>
+          </div>
+
+          {/* Donut Pie Chart with center label */}
+          <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 4, color: '#1e293b' }}>Pipeline vs 3x Benchmark</h4>
+          <p style={{ fontSize: 12, color: '#94a3b8', marginBottom: 12 }}>
+            {pc.openPipeline >= benchmark3x
+              ? 'Green = meets 3x benchmark, Light green = surplus above 3x'
+              : `Colored = Open Pipeline (₹${pc.openPipeline.toFixed(0)} Cr), Grey = gap to reach 3x (₹${(benchmark3x - pc.openPipeline).toFixed(0)} Cr)`}
+          </p>
+          <div style={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={donutData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={120}
+                  startAngle={90}
+                  endAngle={-270}
+                  dataKey="value"
+                  stroke="none"
+                  paddingAngle={2}
+                >
+                  {donutData.map((entry, i) => (
+                    <Cell key={i} fill={entry.fill} />
+                  ))}
+                </Pie>
+                <Tooltip formatter={(v, name) => [`₹${Number(v).toFixed(1)} Cr`, name]}
+                  contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0', padding: '8px 12px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+            {/* Center label overlay */}
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              textAlign: 'center', pointerEvents: 'none',
+            }}>
+              <div style={{ fontSize: 36, fontWeight: 900, color: covColor, lineHeight: 1 }}>{pc.coverage.toFixed(1)}x</div>
+              <div style={{ fontSize: 12, color: '#64748b', fontWeight: 600, marginTop: 2 }}>Coverage</div>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>Target: 3.0x</div>
+            </div>
+          </div>
+          {/* Donut legend */}
+          <div style={{ display: 'flex', justifyContent: 'center', gap: 24, marginTop: 8, marginBottom: 20 }}>
+            {donutData.map((d, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#475569' }}>
+                <div style={{ width: 12, height: 12, borderRadius: 3, background: d.fill }} />
+                <span style={{ fontWeight: 600 }}>{d.name}</span>
+                <span style={{ color: '#94a3b8' }}>₹{Number(d.value).toFixed(1)} Cr</span>
+              </div>
+            ))}
+          </div>
+
+          {/* ARR Breakdown */}
+          <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, marginTop: 8, color: '#1e293b' }}>ARR Breakdown</h4>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ background: '#f0f9ff', borderRadius: 10, padding: 14, textAlign: 'center', border: '1px solid #bae6fd' }}>
+              <div style={{ fontSize: 11, color: '#0369a1', marginBottom: 4 }}>Total ARR Target</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#0c4a6e' }}>₹{arrTarget.toFixed(1)} Cr</div>
+            </div>
+            <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 14, textAlign: 'center', border: '1px solid #bbf7d0' }}>
+              <div style={{ fontSize: 11, color: '#166534', marginBottom: 4 }}>ARR Achieved</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#14532d' }}>₹{arrAch.toFixed(1)} Cr</div>
+            </div>
+            <div style={{ background: '#fef2f2', borderRadius: 10, padding: 14, textAlign: 'center', border: '1px solid #fecaca' }}>
+              <div style={{ fontSize: 11, color: '#991b1b', marginBottom: 4 }}>Remaining Target</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#7f1d1d' }}>₹{pc.remainingTarget.toFixed(1)} Cr</div>
+            </div>
+          </div>
+
+          {/* Coverage interpretation */}
+          <div style={{ background: `${covColor}10`, border: `1px solid ${covColor}30`, borderRadius: 10, padding: 16, marginTop: 8 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: covColor, marginBottom: 4 }}>
+              {pc.coverage >= 3 ? '✅ Healthy Coverage' : pc.coverage >= 1 ? '⚠️ Needs Attention' : '🔴 Critical — Pipeline Below Target'}
+            </div>
+            <div style={{ fontSize: 12, color: '#475569' }}>
+              {pc.coverage >= 3
+                ? `Pipeline of ₹${pc.openPipeline.toFixed(0)} Cr is ${pc.coverage.toFixed(1)}x the remaining ARR target. This is healthy — a 3x coverage is the recommended benchmark.`
+                : pc.coverage >= 1
+                ? `Pipeline of ₹${pc.openPipeline.toFixed(0)} Cr covers ${pc.coverage.toFixed(1)}x the remaining target. Aim for at least 3x coverage to de-risk the number.`
+                : `Pipeline of ₹${pc.openPipeline.toFixed(0)} Cr is below the remaining target of ₹${pc.remainingTarget.toFixed(1)} Cr. Urgent pipeline generation needed.`
+              }
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     return <p>No detail available.</p>;
   };
 
@@ -1411,7 +1541,7 @@ function DashboardContent() {
   const metricTiles = [
     { key: 'arr', label: 'ARR', achievement: metricAchievements.arr, weight: weightages.arr?.weight || 0, drill: 'arr' },
     { key: 'serviceRev', label: 'Service Rev', achievement: metricAchievements.serviceRev, weight: weightages.serviceRev?.weight || 0, drill: 'serviceRev' },
-    { key: 'pipelineCoverage', label: 'Pipeline Coverage', achievement: metricAchievements.pipelineCoverage, weight: weightages.pipelineCoverage?.weight || 0, drill: null, isCoverage: true },
+    { key: 'pipelineCoverage', label: 'Pipeline Coverage', achievement: metricAchievements.pipelineCoverage, weight: weightages.pipelineCoverage?.weight || 0, drill: 'pipelineCoverage', isCoverage: true },
     { key: 'ndr', label: 'NDR', achievement: metricAchievements.ndr, weight: weightages.ndr?.weight || 0, drill: 'ndr' },
     { key: 'gdr', label: 'GDR', achievement: metricAchievements.gdr, weight: weightages.gdr?.weight || 0, drill: 'gdr' },
     { key: 'nps', label: 'NPS', achievement: metricAchievements.nps, weight: weightages.nps?.weight || 0, drill: 'nps' },
@@ -1659,32 +1789,66 @@ function DashboardContent() {
             )}
           </MetricSummaryCard>
 
-          {/* 3. Pipeline Coverage */}
+          {/* 3. Pipeline Coverage — semi-circle gauge with 3x benchmark tick */}
           <MetricSummaryCard title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
             target="3" unit="x"
-            achievement={null} color="#0ea5e9"
+            achievement={null} color="#0ea5e9" onClick={() => openDrill('pipelineCoverage')}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 6 }}>
-              <div style={{
-                width: 72, height: 72, borderRadius: '50%', position: 'relative',
-                background: `conic-gradient(${(pipelineCoverage?.coverage || 0) >= 3 ? '#10b981' : (pipelineCoverage?.coverage || 0) >= 1 ? '#f59e0b' : '#ef4444'} ${Math.min((pipelineCoverage?.coverage || 0) / 5, 1) * 360}deg, #e2e8f0 0deg)`,
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                <div style={{
-                  width: 56, height: 56, borderRadius: '50%', background: '#fff',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  flexDirection: 'column',
-                }}>
-                  <span style={{ fontSize: 18, fontWeight: 900, color: (pipelineCoverage?.coverage || 0) >= 3 ? '#10b981' : (pipelineCoverage?.coverage || 0) >= 1 ? '#f59e0b' : '#ef4444' }}>
-                    {(pipelineCoverage?.coverage || 0).toFixed(1)}x
-                  </span>
+            {(() => {
+              const cov = pipelineCoverage?.coverage || 0;
+              const pcColor = cov >= 3 ? '#10b981' : cov >= 1 ? '#f59e0b' : '#ef4444';
+              const maxScale = 5; // gauge goes from 0x to 5x
+              const pct = Math.min(cov / maxScale, 1); // clamp at 100% of arc
+              const benchmarkPct = 3 / maxScale; // 3x mark at 60% of arc
+              const size = 120;
+              const sw = 10; // stroke width
+              const r = (size - sw) / 2;
+              const halfC = Math.PI * r;
+              const offset = halfC - pct * halfC;
+              // 3x benchmark tick position on semi-circle arc
+              const bmAngle = Math.PI * (1 - benchmarkPct); // angle from right
+              const bmX = size / 2 + r * Math.cos(bmAngle);
+              const bmY = size / 2 - r * Math.sin(bmAngle);
+              // Tick marks: inner and outer points
+              const tickLen = 8;
+              const bmX1 = size / 2 + (r - tickLen) * Math.cos(bmAngle);
+              const bmY1 = size / 2 - (r - tickLen) * Math.sin(bmAngle);
+              const bmX2 = size / 2 + (r + tickLen) * Math.cos(bmAngle);
+              const bmY2 = size / 2 - (r + tickLen) * Math.sin(bmAngle);
+              // Label position (outside the arc)
+              const lblX = size / 2 + (r + 16) * Math.cos(bmAngle);
+              const lblY = size / 2 - (r + 16) * Math.sin(bmAngle);
+
+              return (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'center' }}>
+                  <svg width={size} height={size / 2 + 18} viewBox={`0 0 ${size} ${size / 2 + 18}`}>
+                    {/* Background arc */}
+                    <path d={`M ${sw / 2} ${size / 2} A ${r} ${r} 0 0 1 ${size - sw / 2} ${size / 2}`}
+                      fill="none" stroke="#e2e8f0" strokeWidth={sw} strokeLinecap="round" />
+                    {/* Filled arc */}
+                    <path d={`M ${sw / 2} ${size / 2} A ${r} ${r} 0 0 1 ${size - sw / 2} ${size / 2}`}
+                      fill="none" stroke={pcColor} strokeWidth={sw} strokeLinecap="round"
+                      strokeDasharray={halfC} strokeDashoffset={offset}
+                      style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
+                    {/* 3x benchmark tick */}
+                    <line x1={bmX1} y1={bmY1} x2={bmX2} y2={bmY2}
+                      stroke="#0ea5e9" strokeWidth={2} strokeLinecap="round" />
+                    <text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle"
+                      fontSize="7" fontWeight="700" fill="#0ea5e9">3x</text>
+                    {/* Center value */}
+                    <text x={size / 2} y={size / 2 - 4} textAnchor="middle" dominantBaseline="auto"
+                      fontSize="22" fontWeight="800" fill={pcColor}>{cov.toFixed(1)}x</text>
+                    {/* Scale labels */}
+                    <text x={sw / 2 + 2} y={size / 2 + 14} textAnchor="start" fontSize="7" fill="#94a3b8">0x</text>
+                    <text x={size - sw / 2 - 2} y={size / 2 + 14} textAnchor="end" fontSize="7" fill="#94a3b8">5x</text>
+                  </svg>
+                  <div style={{ display: 'flex', gap: 14, marginTop: 0, fontSize: 9, color: '#64748b', fontWeight: 600 }}>
+                    <span>Pipeline: ₹{(pipelineCoverage?.openPipeline || 0).toFixed(0)} Cr</span>
+                    <span>Rem. Target: ₹{(pipelineCoverage?.remainingTarget || 0).toFixed(1)} Cr</span>
+                  </div>
                 </div>
-              </div>
-              <div style={{ display: 'flex', gap: 14, fontSize: 9, color: '#64748b', fontWeight: 600 }}>
-                <span>Pipeline: ₹{(pipelineCoverage?.openPipeline || 0).toFixed(0)} Cr</span>
-                <span>Rem. Target: ₹{(pipelineCoverage?.remainingTarget || 0).toFixed(1)} Cr</span>
-              </div>
-            </div>
+              );
+            })()}
           </MetricSummaryCard>
 
           {/* 4. NDR (was 3) */}
