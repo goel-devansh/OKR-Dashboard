@@ -295,13 +295,40 @@ const OKRScoreGauge = ({ score, size = 160 }) => {
 /* ================================================================
    Metric Tile — compact clickable row for left sidebar
    ================================================================ */
-const MetricTile = ({ label, achievement, weight, onClick }) => {
+const MetricTile = ({ label, achievement, weight, onClick, isCoverage }) => {
+  // Pipeline coverage: displayed as Nx ratio, not percentage
+  if (isCoverage) {
+    const covColor = achievement >= 3 ? '#10b981' : achievement >= 1 ? '#f59e0b' : '#ef4444';
+    const barPct = Math.min(achievement / 5 * 100, 100); // 5x = full bar
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
+        background: 'rgba(255,255,255,0.04)', transition: 'background 0.2s',
+        borderLeft: `3px solid ${covColor}`,
+      }}
+        onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.08)'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.04)'; }}
+      >
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: covColor, marginLeft: 6, whiteSpace: 'nowrap' }}>{achievement.toFixed(1)}x</span>
+          </div>
+          <div style={{ height: 3, background: '#2a2a4a', borderRadius: 2, overflow: 'hidden' }}>
+            <div style={{ height: '100%', width: `${barPct}%`, background: covColor, borderRadius: 2, transition: 'width 0.8s ease-out' }} />
+          </div>
+          <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 1 }}>Wt: {weight}%</div>
+        </div>
+      </div>
+    );
+  }
+
   const pct = Math.min(Math.max(achievement, 0) * 100, 100);
   const color = achievement >= 0.80 ? (achievement >= 1.0 ? '#10b981' : '#f59e0b') : '#ef4444';
   return (
     <div onClick={onClick} style={{
       display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
-      cursor: 'pointer', background: 'rgba(255,255,255,0.04)', transition: 'background 0.2s',
+      cursor: onClick ? 'pointer' : 'default', background: 'rgba(255,255,255,0.04)', transition: 'background 0.2s',
       borderLeft: `3px solid ${color}`,
     }}
       onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.08)'; }}
@@ -325,10 +352,11 @@ const MetricTile = ({ label, achievement, weight, onClick }) => {
    Compact Metric Summary Card (for right grid — all metrics)
    ================================================================ */
 const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onClick, children }) => {
-  const pctColor = getAchievementColor(achievement);
+  const hasAchievement = achievement != null;
+  const pctColor = hasAchievement ? getAchievementColor(achievement) : '#0ea5e9';
   return (
     <div className="metric-summary-card" onClick={onClick} style={{
-      background: '#fff', borderRadius: 10, padding: '10px 12px', cursor: 'pointer',
+      background: '#fff', borderRadius: 10, padding: '10px 12px', cursor: onClick ? 'pointer' : 'default',
       boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.2s',
       display: 'flex', flexDirection: 'column', height: '100%',
       border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden',
@@ -339,10 +367,10 @@ const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onC
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: color || '#E81F76' }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 2 }}>
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#64748b' }}>{title}</span>
-        <span style={{
+        {hasAchievement && <span style={{
           fontSize: 10, fontWeight: 700, color: pctColor,
           background: pctColor + '18', padding: '1px 6px', borderRadius: 10,
-        }}>{(achievement * 100).toFixed(0)}%</span>
+        }}>{(achievement * 100).toFixed(0)}%</span>}
       </div>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 4, marginBottom: 4 }}>
         <span style={{ fontSize: 16, fontWeight: 800, color: '#1e293b' }}>{value}</span>
@@ -569,7 +597,7 @@ const KeyTakeawaysModal = ({ takeaways, onClose }) => {
    ================================================================ */
 const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collectionTotals,
   quarterlyQBRs, quarterlyHeroStories, quarterlyARR, quarterlyServiceRev,
-  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY }) => {
+  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY, pipelineCoverage }) => {
 
   const fmt = (v, type) => {
     if (type === 'cr') return `₹${Number(v).toFixed(1)} Cr`;
@@ -612,6 +640,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
     { label: 'NPS Score', key: 'nps', target: String(Math.round(npsTarget)), achievement: String(Math.round(npsAch)), pct: metricAchievements.nps },
     { label: 'QBRs Held', key: 'qbr', target: String(Math.round(qbrTarTotal)), achievement: String(Math.round(qbrAchTotal)), pct: metricAchievements.qbr },
     { label: 'Hero Stories', key: 'heroStories', target: String(Math.round(heroTarTotal)), achievement: String(Math.round(heroAchTotal)), pct: metricAchievements.heroStories },
+    { label: 'Pipeline Coverage', key: 'pipelineCoverage', target: '3x', achievement: `${(pipelineCoverage?.coverage || 0).toFixed(1)}x`, pct: metricAchievements.pipelineCoverage, isCoverage: true },
   ];
 
   const totalWeight = rows.reduce((s, r) => s + (weightages[r.key]?.weight || 0), 0);
@@ -653,6 +682,27 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
             <tbody>
               {rows.map((r, i) => {
                 const weight = weightages[r.key]?.weight || 0;
+                // Pipeline coverage: displayed as Nx ratio, not a 0-1 fraction
+                if (r.isCoverage) {
+                  const covVal = r.pct || 0;
+                  const covColor = covVal >= 3 ? '#10b981' : covVal >= 1 ? '#f59e0b' : '#ef4444';
+                  const weightedScore = Math.min(covVal, 1.0) * weight; // capped at 1x for scoring
+                  return (
+                    <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '2px 10px', borderRadius: 12,
+                          background: `${covColor}18`, color: covColor, fontWeight: 700, fontSize: 12,
+                        }}>{covVal.toFixed(1)}x</span>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
+                    </tr>
+                  );
+                }
                 const cappedPct = Math.min(Math.max(r.pct, 0), 1.0);
                 const weightedScore = cappedPct * weight;
                 const achPctVal = r.pct * 100;
@@ -1243,7 +1293,7 @@ function DashboardContent() {
     annualMetrics, monthlyBilling, monthlyCollection,
     quarterlyQBRs, quarterlyHeroStories,
     billingTotals, collectionTotals,
-    weightages, quarterlyARR, quarterlyServiceRev,
+    weightages, quarterlyARR, quarterlyServiceRev, pipelineCoverage,
     availableFunctions, selectedFunction, changeFunction,
     availableYears, selectedFY, changeFY,
   } = useKamDataContext();
@@ -1329,9 +1379,12 @@ function DashboardContent() {
     const heroAchTotal = quarterlyHeroStories.reduce((s, q) => s + q.achievement, 0);
     const heroTarTotal = quarterlyHeroStories.reduce((s, q) => s + q.target, 0);
 
+    const pcCoverage = pipelineCoverage?.coverage || 0;
+
     const raw = {
       arr: safeDiv(annualMetrics.arr.achievementTillDate, annualMetrics.arr.targetFY26),
       serviceRev: safeDiv(annualMetrics.serviceRev.achievementTillDate, annualMetrics.serviceRev.targetFY26),
+      pipelineCoverage: pcCoverage,
       ndr: safeDiv(annualMetrics.ndr.achievementTillDate, annualMetrics.ndr.targetFY26),
       gdr: safeDiv(annualMetrics.gdr.achievementTillDate, annualMetrics.gdr.targetFY26),
       nps: safeDiv(Math.max(0, annualMetrics.nps.achievementTillDate), annualMetrics.nps.targetFY26),
@@ -1346,7 +1399,7 @@ function DashboardContent() {
     let score = 0;
     for (const key of Object.keys(capped)) score += capped[key] * (weightages[key]?.weight || 0);
     return { okrScore: score, metricAchievements: raw };
-  }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, weightages]);
+  }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, weightages, pipelineCoverage]);
 
   /* ---------- Takeaways ---------- */
   const takeaways = useMemo(() =>
@@ -1358,6 +1411,7 @@ function DashboardContent() {
   const metricTiles = [
     { key: 'arr', label: 'ARR', achievement: metricAchievements.arr, weight: weightages.arr?.weight || 0, drill: 'arr' },
     { key: 'serviceRev', label: 'Service Rev', achievement: metricAchievements.serviceRev, weight: weightages.serviceRev?.weight || 0, drill: 'serviceRev' },
+    { key: 'pipelineCoverage', label: 'Pipeline Coverage', achievement: metricAchievements.pipelineCoverage, weight: weightages.pipelineCoverage?.weight || 0, drill: null, isCoverage: true },
     { key: 'ndr', label: 'NDR', achievement: metricAchievements.ndr, weight: weightages.ndr?.weight || 0, drill: 'ndr' },
     { key: 'gdr', label: 'GDR', achievement: metricAchievements.gdr, weight: weightages.gdr?.weight || 0, drill: 'gdr' },
     { key: 'nps', label: 'NPS', achievement: metricAchievements.nps, weight: weightages.nps?.weight || 0, drill: 'nps' },
@@ -1535,7 +1589,8 @@ function DashboardContent() {
           <div className="metric-tiles-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', paddingRight: 3 }}>
             {metricTiles.map(tile => (
               <MetricTile key={tile.key} label={tile.label} achievement={tile.achievement}
-                weight={tile.weight} onClick={() => openDrill(tile.drill)} />
+                weight={tile.weight} onClick={tile.drill ? () => openDrill(tile.drill) : undefined}
+                isCoverage={tile.isCoverage} />
             ))}
           </div>
         </div>
@@ -1604,7 +1659,35 @@ function DashboardContent() {
             )}
           </MetricSummaryCard>
 
-          {/* 3. NDR */}
+          {/* 3. Pipeline Coverage */}
+          <MetricSummaryCard title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
+            target="3" unit="x"
+            achievement={null} color="#0ea5e9"
+          >
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 6 }}>
+              <div style={{
+                width: 72, height: 72, borderRadius: '50%', position: 'relative',
+                background: `conic-gradient(${(pipelineCoverage?.coverage || 0) >= 3 ? '#10b981' : (pipelineCoverage?.coverage || 0) >= 1 ? '#f59e0b' : '#ef4444'} ${Math.min((pipelineCoverage?.coverage || 0) / 5, 1) * 360}deg, #e2e8f0 0deg)`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: '50%', background: '#fff',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'column',
+                }}>
+                  <span style={{ fontSize: 18, fontWeight: 900, color: (pipelineCoverage?.coverage || 0) >= 3 ? '#10b981' : (pipelineCoverage?.coverage || 0) >= 1 ? '#f59e0b' : '#ef4444' }}>
+                    {(pipelineCoverage?.coverage || 0).toFixed(1)}x
+                  </span>
+                </div>
+              </div>
+              <div style={{ display: 'flex', gap: 14, fontSize: 9, color: '#64748b', fontWeight: 600 }}>
+                <span>Pipeline: ₹{(pipelineCoverage?.openPipeline || 0).toFixed(0)} Cr</span>
+                <span>Rem. Target: ₹{(pipelineCoverage?.remainingTarget || 0).toFixed(1)} Cr</span>
+              </div>
+            </div>
+          </MetricSummaryCard>
+
+          {/* 4. NDR (was 3) */}
           <MetricSummaryCard title="NDR" value={`${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}%`}
             target={`${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}`} unit="%"
             achievement={metricAchievements.ndr} color="#06b6d4" onClick={() => openDrill('ndr')}
@@ -1613,7 +1696,7 @@ function DashboardContent() {
               label="NDR" color={getAchievementColor(metricAchievements.ndr)} format="percent" />
           </MetricSummaryCard>
 
-          {/* 4. GDR */}
+          {/* 5. GDR */}
           <MetricSummaryCard title="GDR" value={`${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}%`}
             target={`${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}`} unit="%"
             achievement={metricAchievements.gdr} color="#14b8a6" onClick={() => openDrill('gdr')}
@@ -1622,7 +1705,7 @@ function DashboardContent() {
               label="GDR" color={getAchievementColor(metricAchievements.gdr)} format="percent" />
           </MetricSummaryCard>
 
-          {/* 5. NPS */}
+          {/* 6. NPS */}
           <MetricSummaryCard title="NPS Score" value={annualMetrics.nps.achievementTillDate}
             target={annualMetrics.nps.targetFY26} unit=""
             achievement={metricAchievements.nps} color={annualMetrics.nps.achievementTillDate < 0 ? '#ef4444' : '#10b981'}
@@ -1648,7 +1731,7 @@ function DashboardContent() {
             </div>
           </MetricSummaryCard>
 
-          {/* 6. On-Time Billing (Timeliness) */}
+          {/* 7. On-Time Billing (Timeliness) */}
           <MetricSummaryCard title="Billing Timeliness" value={`${(billingTimeliness.score * 100).toFixed(0)}%`}
             target="100" unit="%"
             achievement={billingTimeliness.score} color="#6366f1" onClick={() => openDrill('billing')}
@@ -1678,7 +1761,7 @@ function DashboardContent() {
             </div>
           </MetricSummaryCard>
 
-          {/* 7. On-Time Collection (Timeliness) */}
+          {/* 8. On-Time Collection (Timeliness) */}
           <MetricSummaryCard title="Collection Timeliness" value={`${(collectionTimeliness.score * 100).toFixed(0)}%`}
             target="100" unit="%"
             achievement={collectionTimeliness.score} color="#06b6d4" onClick={() => openDrill('collection')}
@@ -1708,7 +1791,7 @@ function DashboardContent() {
             </div>
           </MetricSummaryCard>
 
-          {/* 8. QBRs Held */}
+          {/* 9. QBRs Held */}
           <MetricSummaryCard title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
             target={null} unit=""
             achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
@@ -1731,28 +1814,7 @@ function DashboardContent() {
             </div>
           </MetricSummaryCard>
 
-          {/* 9. Hero Stories */}
-          <MetricSummaryCard title="Hero Stories" value={`${heroTotal}/${heroTargetTotal}`}
-            target={null} unit=""
-            achievement={metricAchievements.heroStories} color="#f59e0b" onClick={() => openDrill('heroStories')}
-          >
-            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [v, name === 'heroTarget' ? 'Target' : 'Hero Stories']}
-                    labelFormatter={(l) => l}
-                  />
-                  <Bar dataKey="heroTarget" fill="#fde68a" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#d4a017" />} />
-                  <Bar dataKey="hero" fill="#f59e0b" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f59e0b" />} />
-                </BarChart>
-              </ResponsiveContainer>
-              <MiniLegend items={[{ color: '#fde68a', label: 'Target' }, { color: '#f59e0b', label: 'Done' }]} />
-            </div>
-          </MetricSummaryCard>
+          {/* Grid: 9 cards — ARR, Service Rev, Pipeline Coverage, NDR, GDR, NPS, Billing, Collection, QBRs */}
         </div>
       </div>
       )}
@@ -1780,6 +1842,7 @@ function DashboardContent() {
           collectionTimeliness={collectionTimeliness.score}
           okrScore={okrScore}
           selectedFY={selectedFY}
+          pipelineCoverage={pipelineCoverage}
         />
       )}
       {showBalancedImg && (

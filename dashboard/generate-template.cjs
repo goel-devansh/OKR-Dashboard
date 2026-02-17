@@ -126,6 +126,8 @@ if (isKAM) {
     ['NDR',               baseAnnualKPIs.ndr.target,        useBaseData ? baseAnnualKPIs.ndr.ach        : ''],
     ['GDR',               baseAnnualKPIs.gdr.target,        useBaseData ? baseAnnualKPIs.gdr.ach        : ''],
     ['NPS Score',         baseAnnualKPIs.nps.target,        useBaseData ? baseAnnualKPIs.nps.ach        : ''],
+    ['', '', ''],
+    ['Open Pipeline as of Date (₹ Cr)', '', useBaseData ? 150 : ''],
   ];
   const ws1 = XLSX.utils.aoa_to_sheet(annualData);
   ws1['!cols'] = [{ wch: 22 }, { wch: 18 }, { wch: 22 }];
@@ -233,6 +235,7 @@ if (isKAM) {
     ['collection', 'On-time Collection', 10],
     ['qbr', 'QBRs Held', 3],
     ['heroStories', 'Hero Stories', 2],
+    ['pipelineCoverage', 'Pipeline Coverage', 0],
   ];
   const ws8 = XLSX.utils.aoa_to_sheet(weightageData);
   ws8['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 14 }];

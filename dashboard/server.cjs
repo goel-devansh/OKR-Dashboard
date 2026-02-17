@@ -143,6 +143,8 @@ function parseExcelData(filePath) {
         'nps': '',
       };
 
+      let openPipeline = 0;
+
       for (let i = 1; i < metricRows.length; i++) {
         const row = metricRows[i];
         if (!row[0]) continue;
@@ -156,7 +158,12 @@ function parseExcelData(filePath) {
             unit: unitMap[key] || '',
           };
         }
+        // Parse Open Pipeline value
+        if (label.toLowerCase().includes('pipeline')) {
+          openPipeline = parseNum(row[2]) || parseNum(row[1]); // check Achievement col first, then Target col
+        }
       }
+      data._openPipeline = openPipeline;
     }
 
     // ── 2. Monthly Billing ──
@@ -290,6 +297,23 @@ function parseExcelData(filePath) {
         unit: 'Cr',
       };
     }
+
+    // ── Compute Pipeline Coverage ──
+    const openPipeline = data._openPipeline || 0;
+    if (data.annualMetrics && data.annualMetrics.arr) {
+      const arrTarget = data.annualMetrics.arr.targetFY26 || 0;
+      const arrAch = data.annualMetrics.arr.achievementTillDate || 0;
+      const remainingTarget = arrTarget - arrAch;
+      const coverage = remainingTarget > 0 ? openPipeline / remainingTarget : 0;
+      data.pipelineCoverage = {
+        openPipeline,
+        remainingTarget: Math.max(0, remainingTarget),
+        coverage,
+      };
+    } else {
+      data.pipelineCoverage = { openPipeline, remainingTarget: 0, coverage: 0 };
+    }
+    delete data._openPipeline;
 
     console.log(`Excel parsed successfully: ${path.basename(filePath)} at ${new Date().toLocaleTimeString()}`);
     return data;

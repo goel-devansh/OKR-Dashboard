@@ -104,6 +104,13 @@ export const collectionTotals = {
   achievementPercentage: 261 / 360,
 };
 
+// Pipeline Coverage (Open Pipeline / Remaining ARR Target)
+export const pipelineCoverage = {
+  openPipeline: 150,
+  remainingTarget: 38.37,
+  coverage: 3.91,
+};
+
 // Default OKR Weightages (editable from Excel)
 export const defaultWeightages = {
   arr: { label: 'ARR', weight: 25 },
@@ -115,4 +122,5 @@ export const defaultWeightages = {
   collection: { label: 'On-time Collection', weight: 10 },
   qbr: { label: 'QBRs Held', weight: 3 },
   heroStories: { label: 'Hero Stories', weight: 2 },
+  pipelineCoverage: { label: 'Pipeline Coverage', weight: 0 },
 };

@@ -44,6 +44,7 @@ export function useKamData() {
       billingTotals: apiData.billingTotals || fallbackData.billingTotals,
       collectionTotals: apiData.collectionTotals || fallbackData.collectionTotals,
       weightages: apiData.weightages || fallbackData.defaultWeightages,
+      pipelineCoverage: apiData.pipelineCoverage || fallbackData.pipelineCoverage,
     };
   }, []);
 
@@ -61,6 +62,7 @@ export function useKamData() {
       billingTotals: fallbackData.billingTotals,
       collectionTotals: fallbackData.collectionTotals,
       weightages: fallbackData.defaultWeightages,
+      pipelineCoverage: fallbackData.pipelineCoverage,
     };
   }, []);
 
@@ -252,5 +254,6 @@ export function useKamData() {
     billingTotals: data?.billingTotals || fallbackData.billingTotals,
     collectionTotals: data?.collectionTotals || fallbackData.collectionTotals,
     weightages: data?.weightages || fallbackData.defaultWeightages,
+    pipelineCoverage: data?.pipelineCoverage || fallbackData.pipelineCoverage,
   };
 }
