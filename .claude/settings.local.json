@@ -26,7 +26,8 @@
       "Bash(cmd /c \"ren \"\"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\kam-dashboard\"\" dashboard\")",
       "Bash(cmd /c:*)",
       "Bash(powershell -File -:*)",
-      "Bash(python:*)"
+      "Bash(python:*)",
+      "Bash(del \"C:\\\\Users\\\\DevanshGoel\\\\OneDrive - Acidaes Solutions Pvt Ltd\\\\Desktop\\\\New folder\\\\Code\\\\dashboard\\\\KAM_Dashboard_Input.xlsx\")"
     ]
   }
 }
