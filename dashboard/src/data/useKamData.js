@@ -4,12 +4,24 @@
 // Falls back to hardcoded data if server is not running
 // ============================================================
 import { useState, useEffect, useRef, useCallback } from 'react';
-import * as fallbackData from './kamData.js';
+import * as fallbackKamData from './kamData.js';
+import * as fallbackSalesData from './salesData.js';
 
 const API_URL = 'http://localhost:3001/api/data';
 const YEARS_URL = 'http://localhost:3001/api/years';
 const FUNCTIONS_URL = 'http://localhost:3001/api/functions';
 const WS_URL = 'ws://localhost:3001';
+
+// Map function names to their fallback data modules
+const FALLBACK_MAP = {
+  KAM: fallbackKamData,
+  SALES: fallbackSalesData,
+};
+
+// Get the right fallback module for a function
+function getFallbackModule(func) {
+  return FALLBACK_MAP[func] || fallbackKamData;
+}
 
 export function useKamData() {
   const [data, setData] = useState(null);
@@ -31,38 +43,44 @@ export function useKamData() {
   useEffect(() => { selectedFunctionRef.current = selectedFunction; }, [selectedFunction]);
 
   // Build the data shape from API response
-  const processApiData = useCallback((apiData) => {
+  const processApiData = useCallback((apiData, func) => {
+    const fb = getFallbackModule(func || selectedFunctionRef.current);
     return {
-      annualMetrics: apiData.annualMetrics || fallbackData.annualMetrics,
-      monthlyBilling: apiData.monthlyBilling || fallbackData.monthlyBilling,
-      monthlyCollection: apiData.monthlyCollection || fallbackData.monthlyCollection,
-      quarterlyQBRs: apiData.quarterlyQBRs || fallbackData.quarterlyQBRs,
-      quarterlyHeroStories: apiData.quarterlyHeroStories || fallbackData.quarterlyHeroStories,
-      quarterlyARR: apiData.quarterlyARR || fallbackData.quarterlyARR,
-      quarterlyServiceRev: apiData.quarterlyServiceRev || fallbackData.quarterlyServiceRev,
-      accountOwnerPerformance: apiData.accountOwnerPerformance || fallbackData.accountOwnerPerformance,
-      billingTotals: apiData.billingTotals || fallbackData.billingTotals,
-      collectionTotals: apiData.collectionTotals || fallbackData.collectionTotals,
-      weightages: apiData.weightages || fallbackData.defaultWeightages,
-      pipelineCoverage: apiData.pipelineCoverage || fallbackData.pipelineCoverage,
+      annualMetrics: apiData.annualMetrics || fb.annualMetrics,
+      monthlyBilling: apiData.monthlyBilling || fb.monthlyBilling,
+      monthlyCollection: apiData.monthlyCollection || fb.monthlyCollection,
+      quarterlyQBRs: apiData.quarterlyQBRs || fb.quarterlyQBRs,
+      quarterlyHeroStories: apiData.quarterlyHeroStories || fb.quarterlyHeroStories,
+      quarterlyNewLogos: apiData.quarterlyNewLogos || fb.quarterlyNewLogos || [],
+      newLogosTotals: apiData.newLogosTotals || fb.newLogosTotals || {},
+      quarterlyARR: apiData.quarterlyARR || fb.quarterlyARR,
+      quarterlyServiceRev: apiData.quarterlyServiceRev || fb.quarterlyServiceRev,
+      accountOwnerPerformance: apiData.accountOwnerPerformance || fb.accountOwnerPerformance,
+      billingTotals: apiData.billingTotals || fb.billingTotals,
+      collectionTotals: apiData.collectionTotals || fb.collectionTotals,
+      weightages: apiData.weightages || fb.defaultWeightages,
+      pipelineCoverage: apiData.pipelineCoverage || fb.pipelineCoverage,
     };
   }, []);
 
-  // Get fallback data (hardcoded)
-  const getFallbackData = useCallback(() => {
+  // Get fallback data (hardcoded) for a specific function
+  const getFallbackData = useCallback((func) => {
+    const fb = getFallbackModule(func || selectedFunctionRef.current);
     return {
-      annualMetrics: fallbackData.annualMetrics,
-      monthlyBilling: fallbackData.monthlyBilling,
-      monthlyCollection: fallbackData.monthlyCollection,
-      quarterlyQBRs: fallbackData.quarterlyQBRs,
-      quarterlyHeroStories: fallbackData.quarterlyHeroStories,
-      quarterlyARR: fallbackData.quarterlyARR,
-      quarterlyServiceRev: fallbackData.quarterlyServiceRev,
-      accountOwnerPerformance: fallbackData.accountOwnerPerformance,
-      billingTotals: fallbackData.billingTotals,
-      collectionTotals: fallbackData.collectionTotals,
-      weightages: fallbackData.defaultWeightages,
-      pipelineCoverage: fallbackData.pipelineCoverage,
+      annualMetrics: fb.annualMetrics,
+      monthlyBilling: fb.monthlyBilling,
+      monthlyCollection: fb.monthlyCollection,
+      quarterlyQBRs: fb.quarterlyQBRs,
+      quarterlyHeroStories: fb.quarterlyHeroStories,
+      quarterlyNewLogos: fb.quarterlyNewLogos || [],
+      newLogosTotals: fb.newLogosTotals || {},
+      quarterlyARR: fb.quarterlyARR,
+      quarterlyServiceRev: fb.quarterlyServiceRev,
+      accountOwnerPerformance: fb.accountOwnerPerformance,
+      billingTotals: fb.billingTotals,
+      collectionTotals: fb.collectionTotals,
+      weightages: fb.defaultWeightages,
+      pipelineCoverage: fb.pipelineCoverage,
     };
   }, []);
 
@@ -74,7 +92,7 @@ export function useKamData() {
         return res.json();
       })
       .then(apiData => {
-        const processed = processApiData(apiData);
+        const processed = processApiData(apiData, func);
         setData(processed);
         setLastUpdated(new Date());
         setIsLive(true);
@@ -82,9 +100,10 @@ export function useKamData() {
         console.log(`✅ Loaded ${func}/${fy} data from backend API`);
       })
       .catch(() => {
-        if (func === 'KAM' && fy === 'FY26') {
-          console.log('ℹ️  Backend not running — using static data. Start server.cjs for live updates.');
-          setData(getFallbackData());
+        // Use function-specific fallback if available
+        if (FALLBACK_MAP[func]) {
+          console.log(`ℹ️  Backend not running — using static ${func} data. Start server.cjs for live updates.`);
+          setData(getFallbackData(func));
           setLastUpdated(new Date());
           setIsLive(false);
         } else {
@@ -112,11 +131,11 @@ export function useKamData() {
         }
       })
       .catch(() => {
-        // Server not running
-        if (func === 'KAM') {
+        // Server not running — use fallback for functions that have static data
+        if (FALLBACK_MAP[func]) {
           setAvailableYears(['FY26']);
           setSelectedFY('FY26');
-          return fetchFYData('KAM', 'FY26');
+          return fetchFYData(func, 'FY26');
         }
       });
   }, [fetchFYData]);
@@ -160,7 +179,7 @@ export function useKamData() {
             const msgFunc = (message.function || 'KAM').toUpperCase();
             const msgFY = message.fy || 'FY26';
             if (msgFunc === selectedFunctionRef.current && msgFY === selectedFYRef.current) {
-              const processed = processApiData(message.payload);
+              const processed = processApiData(message.payload, msgFunc);
               setData(processed);
               setLastUpdated(new Date());
               console.log(`📊 Dashboard data updated from server (${msgFunc}/${msgFY})`);
@@ -203,10 +222,11 @@ export function useKamData() {
         }
       })
       .catch(() => {
-        // Server not running — use fallback
-        setAvailableFunctions(['KAM']);
-        setSelectedFunction('KAM');
-        fetchFYData('KAM', 'FY26');
+        // Server not running — use fallback, show all functions with static data
+        const staticFunctions = Object.keys(FALLBACK_MAP);
+        setAvailableFunctions(staticFunctions);
+        setSelectedFunction(staticFunctions[0]);
+        fetchFYData(staticFunctions[0], 'FY26');
       })
       .finally(() => {
         connectWebSocket();
@@ -230,6 +250,9 @@ export function useKamData() {
     fetchFYData(selectedFunctionRef.current, fy);
   }, [fetchFYData]);
 
+  // Current fallback module for direct accessors
+  const fb = getFallbackModule(selectedFunction);
+
   return {
     data,
     loading,
@@ -243,17 +266,19 @@ export function useKamData() {
     selectedFY,
     changeFY,
     // Direct accessors for convenience
-    annualMetrics: data?.annualMetrics || fallbackData.annualMetrics,
-    monthlyBilling: data?.monthlyBilling || fallbackData.monthlyBilling,
-    monthlyCollection: data?.monthlyCollection || fallbackData.monthlyCollection,
-    quarterlyQBRs: data?.quarterlyQBRs || fallbackData.quarterlyQBRs,
-    quarterlyHeroStories: data?.quarterlyHeroStories || fallbackData.quarterlyHeroStories,
-    quarterlyARR: data?.quarterlyARR || fallbackData.quarterlyARR,
-    quarterlyServiceRev: data?.quarterlyServiceRev || fallbackData.quarterlyServiceRev,
-    accountOwnerPerformance: data?.accountOwnerPerformance || fallbackData.accountOwnerPerformance,
-    billingTotals: data?.billingTotals || fallbackData.billingTotals,
-    collectionTotals: data?.collectionTotals || fallbackData.collectionTotals,
-    weightages: data?.weightages || fallbackData.defaultWeightages,
-    pipelineCoverage: data?.pipelineCoverage || fallbackData.pipelineCoverage,
+    annualMetrics: data?.annualMetrics || fb.annualMetrics,
+    monthlyBilling: data?.monthlyBilling || fb.monthlyBilling,
+    monthlyCollection: data?.monthlyCollection || fb.monthlyCollection,
+    quarterlyQBRs: data?.quarterlyQBRs || fb.quarterlyQBRs,
+    quarterlyHeroStories: data?.quarterlyHeroStories || fb.quarterlyHeroStories,
+    quarterlyNewLogos: data?.quarterlyNewLogos || fb.quarterlyNewLogos || [],
+    newLogosTotals: data?.newLogosTotals || fb.newLogosTotals || {},
+    quarterlyARR: data?.quarterlyARR || fb.quarterlyARR,
+    quarterlyServiceRev: data?.quarterlyServiceRev || fb.quarterlyServiceRev,
+    accountOwnerPerformance: data?.accountOwnerPerformance || fb.accountOwnerPerformance,
+    billingTotals: data?.billingTotals || fb.billingTotals,
+    collectionTotals: data?.collectionTotals || fb.collectionTotals,
+    weightages: data?.weightages || fb.defaultWeightages,
+    pipelineCoverage: data?.pipelineCoverage || fb.pipelineCoverage,
   };
 }

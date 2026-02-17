@@ -485,22 +485,28 @@ function computeTimelinessScore(monthlyData) {
 /* ================================================================
    Key Takeaways Generator
    ================================================================ */
-function generateTakeaways(annualMetrics, billingTotals, collectionTotals, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories) {
+function generateTakeaways(annualMetrics, billingTotals, collectionTotals, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, newLogosTotals) {
   const takeaways = [];
 
   // ARR
-  const arrPct = annualMetrics.arr.achievementTillDate / annualMetrics.arr.targetFY26;
-  if (arrPct < 0.5) takeaways.push({ type: 'alert', text: `ARR at ${(arrPct * 100).toFixed(0)}% of target — needs urgent attention to reach ${formatCrore(annualMetrics.arr.targetFY26, 1)}` });
-  else if (arrPct >= 0.8) takeaways.push({ type: 'good', text: `ARR tracking well at ${(arrPct * 100).toFixed(0)}% of target` });
+  if (annualMetrics?.arr) {
+    const arrPct = annualMetrics.arr.achievementTillDate / annualMetrics.arr.targetFY26;
+    if (arrPct < 0.5) takeaways.push({ type: 'alert', text: `ARR at ${(arrPct * 100).toFixed(0)}% of target — needs urgent attention to reach ${formatCrore(annualMetrics.arr.targetFY26, 1)}` });
+    else if (arrPct >= 0.8) takeaways.push({ type: 'good', text: `ARR tracking well at ${(arrPct * 100).toFixed(0)}% of target` });
+  }
 
-  // Service Revenue
-  const srvPct = annualMetrics.serviceRev.achievementTillDate / annualMetrics.serviceRev.targetFY26;
-  if (srvPct >= 0.9) takeaways.push({ type: 'good', text: `Service Revenue strong at ${(srvPct * 100).toFixed(0)}% (${formatCrore(annualMetrics.serviceRev.achievementTillDate, 0)} of ${formatCrore(annualMetrics.serviceRev.targetFY26, 0)})` });
-  else if (srvPct < 0.7) takeaways.push({ type: 'alert', text: `Service Revenue behind at ${(srvPct * 100).toFixed(0)}% — gap of ${formatCrore(annualMetrics.serviceRev.targetFY26 - annualMetrics.serviceRev.achievementTillDate, 0)}` });
+  // Service Revenue (KAM only)
+  if (annualMetrics?.serviceRev) {
+    const srvPct = annualMetrics.serviceRev.achievementTillDate / annualMetrics.serviceRev.targetFY26;
+    if (srvPct >= 0.9) takeaways.push({ type: 'good', text: `Service Revenue strong at ${(srvPct * 100).toFixed(0)}% (${formatCrore(annualMetrics.serviceRev.achievementTillDate, 0)} of ${formatCrore(annualMetrics.serviceRev.targetFY26, 0)})` });
+    else if (srvPct < 0.7) takeaways.push({ type: 'alert', text: `Service Revenue behind at ${(srvPct * 100).toFixed(0)}% — gap of ${formatCrore(annualMetrics.serviceRev.targetFY26 - annualMetrics.serviceRev.achievementTillDate, 0)}` });
+  }
 
   // NPS
-  if (annualMetrics.nps.achievementTillDate < 0) takeaways.push({ type: 'alert', text: `NPS is negative (${annualMetrics.nps.achievementTillDate}) — customer satisfaction needs immediate focus` });
-  else if (annualMetrics.nps.achievementTillDate >= annualMetrics.nps.targetFY26) takeaways.push({ type: 'good', text: `NPS on target at ${annualMetrics.nps.achievementTillDate}` });
+  if (annualMetrics?.nps) {
+    if (annualMetrics.nps.achievementTillDate < 0) takeaways.push({ type: 'alert', text: `NPS is negative (${annualMetrics.nps.achievementTillDate}) — customer satisfaction needs immediate focus` });
+    else if (annualMetrics.nps.achievementTillDate >= annualMetrics.nps.targetFY26) takeaways.push({ type: 'good', text: `NPS on target at ${annualMetrics.nps.achievementTillDate}` });
+  }
 
   // Billing timeliness
   if (billingTimeliness < 0.6) takeaways.push({ type: 'alert', text: `Billing score is ${(billingTimeliness * 100).toFixed(0)}% — billing achievement is significantly below targets` });
@@ -510,13 +516,33 @@ function generateTakeaways(annualMetrics, billingTotals, collectionTotals, billi
   if (collectionTimeliness < 0.6) takeaways.push({ type: 'alert', text: `Collection score is ${(collectionTimeliness * 100).toFixed(0)}% — collection achievement is significantly below targets` });
   else if (collectionTimeliness >= 0.8) takeaways.push({ type: 'good', text: `Collections on track with ${(collectionTimeliness * 100).toFixed(0)}% average achievement vs target` });
 
-  // NDR / GDR
-  if (annualMetrics.ndr.achievementTillDate < annualMetrics.ndr.targetFY26) takeaways.push({ type: 'warn', text: `NDR at ${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}% vs target ${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}% — net revenue retention falling short` });
-  if (annualMetrics.gdr.achievementTillDate < annualMetrics.gdr.targetFY26) takeaways.push({ type: 'warn', text: `GDR at ${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}% vs target ${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}% — higher churn than expected` });
+  // NDR / GDR (KAM only)
+  if (annualMetrics?.ndr) {
+    if (annualMetrics.ndr.achievementTillDate < annualMetrics.ndr.targetFY26) takeaways.push({ type: 'warn', text: `NDR at ${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}% vs target ${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}% — net revenue retention falling short` });
+  }
+  if (annualMetrics?.gdr) {
+    if (annualMetrics.gdr.achievementTillDate < annualMetrics.gdr.targetFY26) takeaways.push({ type: 'warn', text: `GDR at ${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}% vs target ${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}% — higher churn than expected` });
+  }
 
   // QBR
-  const qbrPct = quarterlyQBRs.reduce((s, q) => s + q.achievement, 0) / quarterlyQBRs.reduce((s, q) => s + q.target, 0);
-  if (qbrPct < 0.8) takeaways.push({ type: 'warn', text: `Only ${(qbrPct * 100).toFixed(0)}% of planned QBRs completed — risking customer engagement` });
+  if (quarterlyQBRs && quarterlyQBRs.length > 0) {
+    const qbrPct = quarterlyQBRs.reduce((s, q) => s + q.achievement, 0) / quarterlyQBRs.reduce((s, q) => s + q.target, 0);
+    if (qbrPct < 0.8) takeaways.push({ type: 'warn', text: `Only ${(qbrPct * 100).toFixed(0)}% of planned QBRs completed — risking customer engagement` });
+  }
+
+  // New Logos (Sales)
+  if (newLogosTotals && newLogosTotals.totalTarget > 0) {
+    const nlPct = newLogosTotals.achievementPercentage;
+    if (nlPct < 0.5) takeaways.push({ type: 'alert', text: `New Logos at ${(nlPct * 100).toFixed(0)}% — only ${newLogosTotals.totalAchievement} of ${newLogosTotals.totalTarget} target logos acquired` });
+    else if (nlPct >= 0.8) takeaways.push({ type: 'good', text: `New Logos on track at ${(nlPct * 100).toFixed(0)}% (${newLogosTotals.totalAchievement}/${newLogosTotals.totalTarget})` });
+  }
+
+  // Sales Capacity Achievement
+  if (annualMetrics?.salesCapacity) {
+    const scPct = annualMetrics.salesCapacity.achievementTillDate / annualMetrics.salesCapacity.targetFY26;
+    if (scPct >= 0.9) takeaways.push({ type: 'good', text: `Sales Capacity Achievement strong at ${(scPct * 100).toFixed(0)}%` });
+    else if (scPct < 0.7) takeaways.push({ type: 'warn', text: `Sales Capacity at ${(scPct * 100).toFixed(0)}% — ${annualMetrics.salesCapacity.achievementTillDate} of ${annualMetrics.salesCapacity.targetFY26} target` });
+  }
 
   return takeaways;
 }
@@ -569,8 +595,8 @@ const KeyTakeawaysModal = ({ takeaways, onClose }) => {
    Balanced Scorecard Modal — dynamic table from live data
    ================================================================ */
 const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collectionTotals,
-  quarterlyQBRs, quarterlyHeroStories, quarterlyARR, quarterlyServiceRev,
-  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY, pipelineCoverage }) => {
+  quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, newLogosTotals, quarterlyARR, quarterlyServiceRev,
+  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY, selectedFunction, pipelineCoverage }) => {
 
   const fmt = (v, type) => {
     if (type === 'cr') return `₹${Number(v).toFixed(1)} Cr`;
@@ -580,41 +606,41 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
     return String(v);
   };
 
-  // Build rows from live data
-  // ARR & Service Rev: compute from quarterly arrays (most reliable source)
+  // Computed totals
   const arrTarget = (quarterlyARR || []).reduce((s, q) => s + (q.target || 0), 0);
   const arrAch = (quarterlyARR || []).reduce((s, q) => s + (q.achievement || 0), 0);
   const srvTarget = (quarterlyServiceRev || []).reduce((s, q) => s + (q.target || 0), 0);
   const srvAch = (quarterlyServiceRev || []).reduce((s, q) => s + (q.achievement || 0), 0);
-  // Billing & Collection totals
   const billingTarget = billingTotals?.totalTarget || 0;
   const billingAch = billingTotals?.totalAchievement || 0;
   const collTarget = collectionTotals?.totalTarget || 0;
   const collAch = collectionTotals?.totalAchievement || 0;
-  // Other metrics from annualMetrics
-  const ndrTarget = annualMetrics?.ndr?.targetFY26 || 0;
-  const ndrAch = annualMetrics?.ndr?.achievementTillDate || 0;
-  const gdrTarget = annualMetrics?.gdr?.targetFY26 || 0;
-  const gdrAch = annualMetrics?.gdr?.achievementTillDate || 0;
-  const npsTarget = annualMetrics?.nps?.targetFY26 || 0;
-  const npsAch = annualMetrics?.nps?.achievementTillDate || 0;
   const qbrAchTotal = (quarterlyQBRs || []).reduce((s, q) => s + q.achievement, 0);
   const qbrTarTotal = (quarterlyQBRs || []).reduce((s, q) => s + q.target, 0);
   const heroAchTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.achievement, 0);
   const heroTarTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.target, 0);
+  const nlAchTotal = newLogosTotals?.totalAchievement || 0;
+  const nlTarTotal = newLogosTotals?.totalTarget || 0;
 
-  const rows = [
-    { label: 'Annual Recurring Revenue (ARR)', key: 'arr', target: fmt(arrTarget, 'cr'), achievement: fmt(arrAch, 'cr'), pct: metricAchievements.arr },
-    { label: 'Service Revenue', key: 'serviceRev', target: fmt(srvTarget, 'cr'), achievement: fmt(srvAch, 'cr'), pct: metricAchievements.serviceRev },
-    { label: 'On-Time Billing', key: 'billing', target: fmt(billingTarget, 'cr'), achievement: fmt(billingAch, 'cr'), pct: billingTimeliness },
-    { label: 'On-Time Collection', key: 'collection', target: fmt(collTarget, 'cr'), achievement: fmt(collAch, 'cr'), pct: collectionTimeliness },
-    { label: 'Net Dollar Retention (NDR)', key: 'ndr', target: `${(ndrTarget * 100).toFixed(0)}%`, achievement: `${(ndrAch * 100).toFixed(0)}%`, pct: metricAchievements.ndr },
-    { label: 'Gross Dollar Retention (GDR)', key: 'gdr', target: `${(gdrTarget * 100).toFixed(0)}%`, achievement: `${(gdrAch * 100).toFixed(0)}%`, pct: metricAchievements.gdr },
-    { label: 'NPS Score', key: 'nps', target: String(Math.round(npsTarget)), achievement: String(Math.round(npsAch)), pct: metricAchievements.nps },
-    { label: 'QBRs Held', key: 'qbr', target: String(Math.round(qbrTarTotal)), achievement: String(Math.round(qbrAchTotal)), pct: metricAchievements.qbr },
-    { label: 'Hero Stories', key: 'heroStories', target: String(Math.round(heroTarTotal)), achievement: String(Math.round(heroAchTotal)), pct: metricAchievements.heroStories },
-    { label: 'Pipeline Coverage', key: 'pipelineCoverage', target: '3x', achievement: `${(pipelineCoverage?.coverage || 0).toFixed(1)}x`, pct: metricAchievements.pipelineCoverage, isCoverage: true },
-  ];
+  // Build rows dynamically from weightages
+  const allRowDefs = {
+    arr: { label: 'Annual Recurring Revenue (ARR)', target: fmt(arrTarget, 'cr'), achievement: fmt(arrAch, 'cr'), pct: metricAchievements.arr },
+    serviceRev: { label: 'Service Revenue', target: fmt(srvTarget, 'cr'), achievement: fmt(srvAch, 'cr'), pct: metricAchievements.serviceRev },
+    billing: { label: 'On-Time Billing', target: fmt(billingTarget, 'cr'), achievement: fmt(billingAch, 'cr'), pct: billingTimeliness },
+    collection: { label: 'On-Time Collection', target: fmt(collTarget, 'cr'), achievement: fmt(collAch, 'cr'), pct: collectionTimeliness },
+    ndr: { label: 'Net Dollar Retention (NDR)', target: `${((annualMetrics?.ndr?.targetFY26 || 0) * 100).toFixed(0)}%`, achievement: `${((annualMetrics?.ndr?.achievementTillDate || 0) * 100).toFixed(0)}%`, pct: metricAchievements.ndr },
+    gdr: { label: 'Gross Dollar Retention (GDR)', target: `${((annualMetrics?.gdr?.targetFY26 || 0) * 100).toFixed(0)}%`, achievement: `${((annualMetrics?.gdr?.achievementTillDate || 0) * 100).toFixed(0)}%`, pct: metricAchievements.gdr },
+    nps: { label: 'NPS Score', target: String(Math.round(annualMetrics?.nps?.targetFY26 || 0)), achievement: String(Math.round(annualMetrics?.nps?.achievementTillDate || 0)), pct: metricAchievements.nps },
+    qbr: { label: 'QBRs Held', target: String(Math.round(qbrTarTotal)), achievement: String(Math.round(qbrAchTotal)), pct: metricAchievements.qbr },
+    heroStories: { label: 'Hero Stories', target: String(Math.round(heroTarTotal)), achievement: String(Math.round(heroAchTotal)), pct: metricAchievements.heroStories },
+    pipelineCoverage: { label: 'Pipeline Coverage', target: '3x', achievement: `${(pipelineCoverage?.coverage || 0).toFixed(1)}x`, pct: metricAchievements.pipelineCoverage, isCoverage: true },
+    newLogos: { label: '# of New Logos', target: String(Math.round(nlTarTotal)), achievement: String(Math.round(nlAchTotal)), pct: metricAchievements.newLogos },
+    salesCapacity: { label: 'Sales Capacity Achievement', target: String(Math.round(annualMetrics?.salesCapacity?.targetFY26 || 0)), achievement: String(Math.round(annualMetrics?.salesCapacity?.achievementTillDate || 0)), pct: metricAchievements.salesCapacity },
+  };
+
+  const rows = Object.keys(weightages)
+    .filter(key => allRowDefs[key])
+    .map(key => ({ key, ...allRowDefs[key] }));
 
   const totalWeight = rows.reduce((s, r) => s + (weightages[r.key]?.weight || 0), 0);
 
@@ -637,7 +663,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
           display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
         }}>✕</button>
 
-        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>📊 KAM Balanced Scorecard</h3>
+        <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>📊 {selectedFunction || 'KAM'} Balanced Scorecard</h3>
         <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>{selectedFY || 'FY'} — Live from dashboard data</p>
 
         <div className="scorecard-table-wrap" style={{ overflowX: 'auto' }}>
@@ -737,7 +763,9 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
   if (!section) return null;
   const ctx = useKamDataContext();
   const { annualMetrics, monthlyBilling, monthlyCollection, quarterlyQBRs, quarterlyHeroStories,
-    billingTotals, collectionTotals, quarterlyARR, quarterlyServiceRev, pipelineCoverage, accountOwnerPerformance } = ctx;
+    quarterlyNewLogos, newLogosTotals,
+    billingTotals, collectionTotals, quarterlyARR, quarterlyServiceRev, pipelineCoverage, accountOwnerPerformance,
+    selectedFunction } = ctx;
 
   /* Toggle buttons for sections that support Account Owner view */
   const hasOwnerView = section === 'arr' || section === 'billing' || section === 'collection';
@@ -811,6 +839,8 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
     gdr: 'Gross Dollar Retention (GDR)',
     nps: 'NPS Score',
     heroStories: 'Hero Stories — Quarterly Breakdown',
+    newLogos: '# of New Logos — Quarterly Breakdown',
+    salesCapacity: 'Sales Capacity Achievement',
     pipelineCoverage: 'Pipeline Coverage — Open Pipeline vs Remaining Target',
   };
 
@@ -1283,6 +1313,125 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
       );
     }
 
+    /* --- New Logos Drill-Down (quarterly breakdown, same pattern as QBRs) --- */
+    if (section === 'newLogos') {
+      const nlData = quarterlyNewLogos || [];
+      const nlTotalAch = nlData.reduce((s, q) => s + q.achievement, 0);
+      const nlTotalTar = nlData.reduce((s, q) => s + q.target, 0);
+      const nlOverallPct = nlTotalTar > 0 ? nlTotalAch / nlTotalTar : 0;
+      const nlChartData = nlData.map(q => ({
+        quarter: q.quarter,
+        target: q.target,
+        achievement: q.achievement,
+        percentage: q.percentage,
+      }));
+      return (
+        <div>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{nlTotalTar}</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achieved YTD</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(nlOverallPct) }}>{nlTotalAch}</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achievement</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(nlOverallPct) }}>{(nlOverallPct * 100).toFixed(0)}%</div>
+            </div>
+          </div>
+          {nlChartData.length > 0 && (
+            <>
+              <h4 style={{ fontSize: 15, fontWeight: 700, marginBottom: 12, color: '#1e293b' }}>Quarterly New Logos</h4>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={nlChartData} barGap={8} margin={{ top: 22, right: 10, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                  <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
+                  <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} allowDecimals={false} domain={[0, dataMax => Math.ceil(dataMax * 1.25) || 1]} />
+                  <Tooltip formatter={(v) => [Number(v).toFixed(0), '']} />
+                  <Bar dataKey="target" name="Target" fill="#fde68a" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#a5b4c8" />} />
+                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={<BarLabel fill="#f59e0b" />}>
+                    {nlChartData.map((entry, i) => (
+                      <Cell key={i} fill={getAchievementColor(entry.percentage)} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <div style={{ display: 'flex', gap: 10, marginTop: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+                {nlData.map(q => (
+                  <div key={q.quarter} style={{
+                    padding: '6px 14px', borderRadius: 8, border: `1px solid ${getAchievementColor(q.percentage)}40`,
+                    background: `${getAchievementColor(q.percentage)}10`, textAlign: 'center',
+                  }}>
+                    <div style={{ fontSize: 11, color: '#64748b', fontWeight: 600 }}>{q.quarter}</div>
+                    <div style={{ fontSize: 16, fontWeight: 800, color: getAchievementColor(q.percentage) }}>
+                      {q.achievement}/{q.target} <span style={{ fontSize: 12 }}>({(q.percentage * 100).toFixed(0)}%)</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </>
+          )}
+        </div>
+      );
+    }
+
+    /* --- Sales Capacity Achievement Drill-Down (annual target vs achievement, same pattern as NPS) --- */
+    if (section === 'salesCapacity') {
+      const sc = annualMetrics?.salesCapacity;
+      if (!sc) return <p>Sales Capacity data not available.</p>;
+      const scPct = sc.targetFY26 > 0 ? sc.achievementTillDate / sc.targetFY26 : 0;
+      return (
+        <div>
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20 }}>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>{selectedFY || 'FY'} Target</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: '#1e293b' }}>{sc.targetFY26}</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achievement YTD</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(scPct) }}>{sc.achievementTillDate}</div>
+            </div>
+            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Achievement %</div>
+              <div style={{ fontSize: 24, fontWeight: 800, color: getAchievementColor(scPct) }}>{(scPct * 100).toFixed(0)}%</div>
+            </div>
+          </div>
+          {/* Progress bar */}
+          <div style={{ marginBottom: 20 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#64748b', marginBottom: 6 }}>
+              <span>Progress to Target</span>
+              <span>{(scPct * 100).toFixed(0)}%</span>
+            </div>
+            <div style={{ width: '100%', height: 16, background: '#e2e8f0', borderRadius: 8, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 8, transition: 'width 0.8s ease-out',
+                width: `${Math.min(scPct * 100, 100)}%`,
+                background: `linear-gradient(90deg, ${getAchievementColor(scPct)}, ${getAchievementColor(scPct)}99)`,
+              }} />
+            </div>
+          </div>
+          {/* Status */}
+          <div style={{
+            background: scPct >= 0.9 ? '#f0fdf4' : scPct >= 0.7 ? '#fffbeb' : '#fef2f2',
+            border: `1px solid ${getAchievementColor(scPct)}30`,
+            borderRadius: 10, padding: 16,
+          }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: getAchievementColor(scPct), marginBottom: 4 }}>
+              {scPct >= 0.9 ? '✅ On Track' : scPct >= 0.7 ? '⚠️ Needs Attention' : '🔴 At Risk'}
+            </div>
+            <div style={{ fontSize: 12, color: '#475569' }}>
+              {scPct >= 0.9
+                ? `Sales capacity achievement of ${sc.achievementTillDate} out of ${sc.targetFY26} is on track.`
+                : `Sales capacity at ${sc.achievementTillDate} out of ${sc.targetFY26} target. ${sc.targetFY26 - sc.achievementTillDate} remaining to achieve the target.`
+              }
+            </div>
+          </div>
+        </div>
+      );
+    }
+
     /* --- Pipeline Coverage Drill-Down --- */
     if (section === 'pipelineCoverage') {
       const pc = pipelineCoverage || { openPipeline: 0, remainingTarget: 0, coverage: 0 };
@@ -1449,6 +1598,7 @@ function DashboardContent() {
     isLive, lastUpdated, data, loading,
     annualMetrics, monthlyBilling, monthlyCollection,
     quarterlyQBRs, quarterlyHeroStories,
+    quarterlyNewLogos, newLogosTotals,
     billingTotals, collectionTotals,
     weightages, quarterlyARR, quarterlyServiceRev, pipelineCoverage,
     availableFunctions, selectedFunction, changeFunction,
@@ -1528,66 +1678,90 @@ function DashboardContent() {
   const billingTimeliness = useMemo(() => computeTimelinessScore(monthlyBilling), [monthlyBilling]);
   const collectionTimeliness = useMemo(() => computeTimelinessScore(monthlyCollection), [monthlyCollection]);
 
-  /* ---------- OKR Score Calculation ---------- */
+  /* ---------- OKR Score Calculation (data-driven from weightages) ---------- */
   const { okrScore, metricAchievements } = useMemo(() => {
     const safeDiv = (a, b) => (b === 0 ? 0 : a / b);
     const qbrAchTotal = quarterlyQBRs.reduce((s, q) => s + q.achievement, 0);
     const qbrTarTotal = quarterlyQBRs.reduce((s, q) => s + q.target, 0);
-    const heroAchTotal = quarterlyHeroStories.reduce((s, q) => s + q.achievement, 0);
-    const heroTarTotal = quarterlyHeroStories.reduce((s, q) => s + q.target, 0);
+    const heroAchTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.achievement, 0);
+    const heroTarTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.target, 0);
+    const nlAchTotal = (quarterlyNewLogos || []).reduce((s, q) => s + q.achievement, 0);
+    const nlTarTotal = (quarterlyNewLogos || []).reduce((s, q) => s + q.target, 0);
 
     const pcCoverage = pipelineCoverage?.coverage || 0;
 
-    const raw = {
-      arr: safeDiv(annualMetrics.arr.achievementTillDate, annualMetrics.arr.targetFY26),
-      serviceRev: safeDiv(annualMetrics.serviceRev.achievementTillDate, annualMetrics.serviceRev.targetFY26),
-      pipelineCoverage: pcCoverage,
-      ndr: safeDiv(annualMetrics.ndr.achievementTillDate, annualMetrics.ndr.targetFY26),
-      gdr: safeDiv(annualMetrics.gdr.achievementTillDate, annualMetrics.gdr.targetFY26),
-      nps: safeDiv(Math.max(0, annualMetrics.nps.achievementTillDate), annualMetrics.nps.targetFY26),
-      billing: billingTimeliness.score,
-      collection: collectionTimeliness.score,
-      qbr: safeDiv(qbrAchTotal, qbrTarTotal),
-      heroStories: safeDiv(heroAchTotal, heroTarTotal),
-    };
+    // Build raw achievements for all possible metrics
+    const raw = {};
+    if (weightages.arr) raw.arr = safeDiv(annualMetrics?.arr?.achievementTillDate || 0, annualMetrics?.arr?.targetFY26 || 1);
+    if (weightages.serviceRev) raw.serviceRev = safeDiv(annualMetrics?.serviceRev?.achievementTillDate || 0, annualMetrics?.serviceRev?.targetFY26 || 1);
+    if (weightages.pipelineCoverage) raw.pipelineCoverage = pcCoverage;
+    if (weightages.ndr) raw.ndr = safeDiv(annualMetrics?.ndr?.achievementTillDate || 0, annualMetrics?.ndr?.targetFY26 || 1);
+    if (weightages.gdr) raw.gdr = safeDiv(annualMetrics?.gdr?.achievementTillDate || 0, annualMetrics?.gdr?.targetFY26 || 1);
+    if (weightages.nps) raw.nps = safeDiv(Math.max(0, annualMetrics?.nps?.achievementTillDate || 0), annualMetrics?.nps?.targetFY26 || 1);
+    if (weightages.billing) raw.billing = billingTimeliness.score;
+    if (weightages.collection) raw.collection = collectionTimeliness.score;
+    if (weightages.qbr) raw.qbr = safeDiv(qbrAchTotal, qbrTarTotal);
+    if (weightages.heroStories) raw.heroStories = safeDiv(heroAchTotal, heroTarTotal);
+    if (weightages.newLogos) raw.newLogos = safeDiv(nlAchTotal, nlTarTotal);
+    if (weightages.salesCapacity) raw.salesCapacity = safeDiv(annualMetrics?.salesCapacity?.achievementTillDate || 0, annualMetrics?.salesCapacity?.targetFY26 || 1);
 
     const capped = {};
     for (const key of Object.keys(raw)) capped[key] = Math.min(Math.max(raw[key], 0), 1.0);
     let score = 0;
     for (const key of Object.keys(capped)) score += capped[key] * (weightages[key]?.weight || 0);
     return { okrScore: score, metricAchievements: raw };
-  }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, weightages, pipelineCoverage]);
+  }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, weightages, pipelineCoverage]);
 
   /* ---------- Takeaways ---------- */
   const takeaways = useMemo(() =>
-    generateTakeaways(annualMetrics, billingTotals, collectionTotals, billingTimeliness.score, collectionTimeliness.score, quarterlyQBRs, quarterlyHeroStories),
-    [annualMetrics, billingTotals, collectionTotals, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories]
+    generateTakeaways(annualMetrics, billingTotals, collectionTotals, billingTimeliness.score, collectionTimeliness.score, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, newLogosTotals),
+    [annualMetrics, billingTotals, collectionTotals, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, newLogosTotals]
   );
 
-  /* ---------- All metric tiles ---------- */
-  const metricTiles = [
-    { key: 'arr', label: 'ARR', achievement: metricAchievements.arr, weight: weightages.arr?.weight || 0, drill: 'arr' },
-    { key: 'serviceRev', label: 'Service Revenue', achievement: metricAchievements.serviceRev, weight: weightages.serviceRev?.weight || 0, drill: 'serviceRev' },
-    { key: 'pipelineCoverage', label: 'Pipeline Coverage', achievement: metricAchievements.pipelineCoverage, weight: weightages.pipelineCoverage?.weight || 0, drill: 'pipelineCoverage', isCoverage: true },
-    { key: 'ndr', label: 'NDR', achievement: metricAchievements.ndr, weight: weightages.ndr?.weight || 0, drill: 'ndr' },
-    { key: 'gdr', label: 'GDR', achievement: metricAchievements.gdr, weight: weightages.gdr?.weight || 0, drill: 'gdr' },
-    { key: 'nps', label: 'NPS', achievement: metricAchievements.nps, weight: weightages.nps?.weight || 0, drill: 'nps' },
-    { key: 'billing', label: 'Billing (Timeliness)', achievement: metricAchievements.billing, weight: weightages.billing?.weight || 0, drill: 'billing' },
-    { key: 'collection', label: 'Collection (Timeliness)', achievement: metricAchievements.collection, weight: weightages.collection?.weight || 0, drill: 'collection' },
-    { key: 'qbr', label: 'QBRs Held', achievement: metricAchievements.qbr, weight: weightages.qbr?.weight || 0, drill: 'qbr' },
-    { key: 'heroStories', label: 'Hero Stories', achievement: metricAchievements.heroStories, weight: weightages.heroStories?.weight || 0, drill: 'heroStories' },
-  ].sort((a, b) => b.weight - a.weight);
+  /* ---------- All metric tiles (data-driven from weightages) ---------- */
+  const metricTileConfig = {
+    arr: { label: 'ARR', drill: 'arr' },
+    serviceRev: { label: 'Service Revenue', drill: 'serviceRev' },
+    pipelineCoverage: { label: 'Pipeline Coverage', drill: 'pipelineCoverage', isCoverage: true },
+    ndr: { label: 'NDR', drill: 'ndr' },
+    gdr: { label: 'GDR', drill: 'gdr' },
+    nps: { label: 'NPS', drill: 'nps' },
+    billing: { label: 'Billing (Timeliness)', drill: 'billing' },
+    collection: { label: 'Collection (Timeliness)', drill: 'collection' },
+    qbr: { label: 'QBRs Held', drill: 'qbr' },
+    heroStories: { label: 'Hero Stories', drill: 'heroStories' },
+    newLogos: { label: '# of New Logos', drill: 'newLogos' },
+    salesCapacity: { label: 'Sales Capacity', drill: 'salesCapacity' },
+  };
+  const metricTiles = Object.keys(weightages)
+    .filter(key => metricTileConfig[key])
+    .map(key => ({
+      key,
+      label: metricTileConfig[key].label,
+      achievement: metricAchievements[key] || 0,
+      weight: weightages[key]?.weight || 0,
+      drill: metricTileConfig[key].drill,
+      isCoverage: metricTileConfig[key].isCoverage || false,
+    }))
+    .sort((a, b) => b.weight - a.weight);
 
   /* ---------- Helper for sparkline data ---------- */
   const qbrCombined = quarterlyQBRs.map((q, i) => ({
     q: q.quarter.replace(/FY\d+/, '').trim(),
     qbr: q.achievement, qbrTarget: q.target,
-    hero: quarterlyHeroStories[i]?.achievement || 0, heroTarget: quarterlyHeroStories[i]?.target || 0,
+    hero: (quarterlyHeroStories || [])[i]?.achievement || 0, heroTarget: (quarterlyHeroStories || [])[i]?.target || 0,
   }));
   const qbrTotal = quarterlyQBRs.reduce((s, q) => s + q.achievement, 0);
   const qbrTargetTotal = quarterlyQBRs.reduce((s, q) => s + q.target, 0);
-  const heroTotal = quarterlyHeroStories.reduce((s, q) => s + q.achievement, 0);
-  const heroTargetTotal = quarterlyHeroStories.reduce((s, q) => s + q.target, 0);
+  const heroTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.achievement, 0);
+  const heroTargetTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.target, 0);
+  // New Logos helpers
+  const nlData = (quarterlyNewLogos || []).map(q => ({
+    q: q.quarter.replace(/FY\d+/, '').trim(),
+    ...q,
+  }));
+  const nlTotal = (quarterlyNewLogos || []).reduce((s, q) => s + q.achievement, 0);
+  const nlTargetTotal = (quarterlyNewLogos || []).reduce((s, q) => s + q.target, 0);
 
   /* ---------- Render ---------- */
   return (
@@ -1625,7 +1799,7 @@ function DashboardContent() {
         </div>
         <div className="header-right" style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           {/* Scorecard Summary Button (dynamic data table) */}
-          {selectedFunction === 'KAM' && data && (
+          {data && (
             <button onClick={() => setShowScorecard(true)} style={{
               display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
               border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
@@ -1639,7 +1813,7 @@ function DashboardContent() {
             </button>
           )}
           {/* Balanced Scorecard Button (image popup) */}
-          {selectedFunction === 'KAM' && data && (
+          {data && (
             <button onClick={() => setShowBalancedImg(true)} style={{
               display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
               border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
@@ -1695,8 +1869,8 @@ function DashboardContent() {
         </div>
       </header>
 
-      {/* ====== Function Placeholder for non-KAM functions (hidden during initial load) ====== */}
-      {!loading && (selectedFunction !== 'KAM' || !data) && selectedFunction && (
+      {/* ====== Placeholder when no data is available ====== */}
+      {!loading && !data && selectedFunction && (
         <div style={{
           flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
           padding: 40, textAlign: 'center', gap: 16,
@@ -1705,17 +1879,11 @@ function DashboardContent() {
           <h2 style={{ fontSize: 22, fontWeight: 800, color: '#1e293b', margin: 0 }}>
             {selectedFunction} Dashboard
           </h2>
-          {data ? (
-            <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, lineHeight: 1.6 }}>
-              <strong>{selectedFunction}</strong> dashboard is coming soon. Data file detected &mdash; metrics and visualizations will be added in a future update.
-            </p>
-          ) : (
-            <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, lineHeight: 1.6 }}>
-              No data available for <strong>{selectedFunction}</strong> yet. Place a <code style={{
-                background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: 12,
-              }}>{selectedFunction}_Dashboard_FY26.xlsx</code> file in the server folder to get started.
-            </p>
-          )}
+          <p style={{ fontSize: 14, color: '#64748b', maxWidth: 420, lineHeight: 1.6 }}>
+            No data available for <strong>{selectedFunction}</strong> yet. Place a <code style={{
+              background: '#f1f5f9', padding: '2px 6px', borderRadius: 4, fontSize: 12,
+            }}>{selectedFunction}_Dashboard_FY26.xlsx</code> file in the server folder to get started.
+          </p>
           <div style={{
             marginTop: 8, padding: '10px 20px', borderRadius: 8,
             background: 'linear-gradient(135deg, #1a1a2e, #16213e)',
@@ -1726,8 +1894,8 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* ====== Main Body (KAM full dashboard) ====== */}
-      {selectedFunction === 'KAM' && data && (
+      {/* ====== Main Body (all functions with data) ====== */}
+      {data && (
       <div className="dashboard-body" style={{ flex: 1, display: 'flex', overflow: 'hidden', padding: 8, gap: 8 }}>
 
         {/* ---- Left Column: OKR Gauge + All Metric Tiles ---- */}
@@ -1756,11 +1924,12 @@ function DashboardContent() {
         <div className="dashboard-metrics-grid" style={{
           flex: 1, display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gridTemplateRows: 'repeat(3, 1fr)',
+          gridAutoRows: '1fr',
           gap: 8, overflow: 'hidden',
         }}>
 
           {/* 1. ARR */}
+          {weightages.arr && annualMetrics?.arr && (
           <MetricSummaryCard title="ARR" value={formatCrore(annualMetrics.arr.achievementTillDate, 1)}
             target={annualMetrics.arr.targetFY26.toFixed(1)} unit="Cr"
             achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
@@ -1787,10 +1956,12 @@ function DashboardContent() {
               </div>
             )}
           </MetricSummaryCard>
+          )}
 
-          {/* 2. Service Revenue */}
-          <MetricSummaryCard title="Service Revenue" value={formatCrore(annualMetrics.serviceRev.achievementTillDate, 0)}
-            target={annualMetrics.serviceRev.targetFY26} unit="Cr"
+          {/* 2. Service Revenue (KAM only) */}
+          {weightages.serviceRev && (
+          <MetricSummaryCard title="Service Revenue" value={formatCrore(annualMetrics?.serviceRev?.achievementTillDate || 0, 0)}
+            target={annualMetrics?.serviceRev?.targetFY26 || 0} unit="Cr"
             achievement={metricAchievements.serviceRev} color="#8b5cf6" onClick={() => openDrill('serviceRev')}
           >
             {(quarterlyServiceRev || []).length > 0 && (
@@ -1815,6 +1986,7 @@ function DashboardContent() {
               </div>
             )}
           </MetricSummaryCard>
+          )}
 
           {/* 3. Pipeline Coverage — semi-circle gauge with 3x benchmark tick */}
           <MetricSummaryCard title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
@@ -1878,7 +2050,8 @@ function DashboardContent() {
             })()}
           </MetricSummaryCard>
 
-          {/* 4. NDR (was 3) */}
+          {/* 4. NDR (KAM only) */}
+          {weightages.ndr && annualMetrics?.ndr && (
           <MetricSummaryCard title="NDR" value={`${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}%`}
             target={`${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}`} unit="%"
             achievement={metricAchievements.ndr} color="#06b6d4" onClick={() => openDrill('ndr')}
@@ -1886,8 +2059,10 @@ function DashboardContent() {
             <MiniGauge value={annualMetrics.ndr.achievementTillDate} target={annualMetrics.ndr.targetFY26}
               label="NDR" color={getAchievementColor(metricAchievements.ndr)} format="percent" />
           </MetricSummaryCard>
+          )}
 
-          {/* 5. GDR */}
+          {/* 5. GDR (KAM only) */}
+          {weightages.gdr && annualMetrics?.gdr && (
           <MetricSummaryCard title="GDR" value={`${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}%`}
             target={`${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}`} unit="%"
             achievement={metricAchievements.gdr} color="#14b8a6" onClick={() => openDrill('gdr')}
@@ -1895,8 +2070,10 @@ function DashboardContent() {
             <MiniGauge value={annualMetrics.gdr.achievementTillDate} target={annualMetrics.gdr.targetFY26}
               label="GDR" color={getAchievementColor(metricAchievements.gdr)} format="percent" />
           </MetricSummaryCard>
+          )}
 
           {/* 6. NPS */}
+          {weightages.nps && annualMetrics?.nps && (
           <MetricSummaryCard title="NPS Score" value={annualMetrics.nps.achievementTillDate}
             target={annualMetrics.nps.targetFY26} unit=""
             achievement={metricAchievements.nps} color={annualMetrics.nps.achievementTillDate < 0 ? '#ef4444' : '#10b981'}
@@ -1921,6 +2098,7 @@ function DashboardContent() {
               </div>
             </div>
           </MetricSummaryCard>
+          )}
 
           {/* 7. On-Time Billing (Timeliness) */}
           <MetricSummaryCard title="Billing Timeliness" value={`${(billingTimeliness.score * 100).toFixed(0)}%`}
@@ -2005,19 +2183,65 @@ function DashboardContent() {
             </div>
           </MetricSummaryCard>
 
-          {/* Grid: 9 cards — ARR, Service Rev, Pipeline Coverage, NDR, GDR, NPS, Billing, Collection, QBRs */}
+          {/* New Logos card (Sales) */}
+          {weightages.newLogos && (
+          <MetricSummaryCard title="# of New Logos" value={`${nlTotal}/${nlTargetTotal}`}
+            target={null} unit=""
+            achievement={metricAchievements.newLogos || 0} color="#f59e0b" onClick={() => openDrill('newLogos')}
+          >
+            {nlData.length > 0 && (
+              <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={nlData} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                    <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                    <Tooltip
+                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                      formatter={(v, name) => [Number(v).toFixed(0), name === 'target' ? 'Target' : 'Acquired']}
+                      labelFormatter={(l) => l}
+                    />
+                    <Bar dataKey="target" fill="#fde68a" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
+                    <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f59e0b" />}>
+                      {nlData.map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+                <MiniLegend items={[{ color: '#fde68a', label: 'Target' }, { color: '#f59e0b', label: 'Done' }]} />
+              </div>
+            )}
+          </MetricSummaryCard>
+          )}
+
+          {/* Sales Capacity card (Sales) */}
+          {weightages.salesCapacity && annualMetrics?.salesCapacity && (
+          <MetricSummaryCard title="Sales Capacity"
+            value={annualMetrics.salesCapacity.achievementTillDate}
+            target={annualMetrics.salesCapacity.targetFY26} unit=""
+            achievement={metricAchievements.salesCapacity || 0} color="#6366f1" onClick={() => openDrill('salesCapacity')}
+          >
+            <MiniGauge
+              value={annualMetrics.salesCapacity.achievementTillDate / (annualMetrics.salesCapacity.targetFY26 || 1)}
+              target={1}
+              label="Capacity"
+              color={getAchievementColor(metricAchievements.salesCapacity || 0)}
+              format="percent"
+            />
+          </MetricSummaryCard>
+          )}
+
+          {/* Grid cards rendered above — count varies by function */}
         </div>
       </div>
       )}
 
       {/* ====== Modals ====== */}
-      {selectedFunction === 'KAM' && data && (
+      {data && (
         <DrillDownModal section={drillSection} onClose={closeDrill}
           billingTimelinessData={billingTimeliness} collectionTimelinessData={collectionTimeliness}
           selectedFY={selectedFY} />
       )}
       {showTakeaways && <KeyTakeawaysModal takeaways={takeaways} onClose={() => setShowTakeaways(false)} />}
-      {showScorecard && selectedFunction === 'KAM' && data && (
+      {showScorecard && data && (
         <BalancedScorecardModal
           onClose={() => setShowScorecard(false)}
           annualMetrics={annualMetrics}
@@ -2025,6 +2249,8 @@ function DashboardContent() {
           collectionTotals={collectionTotals}
           quarterlyQBRs={quarterlyQBRs}
           quarterlyHeroStories={quarterlyHeroStories}
+          quarterlyNewLogos={quarterlyNewLogos}
+          newLogosTotals={newLogosTotals}
           quarterlyARR={quarterlyARR}
           quarterlyServiceRev={quarterlyServiceRev}
           weightages={weightages}
@@ -2033,6 +2259,7 @@ function DashboardContent() {
           collectionTimeliness={collectionTimeliness.score}
           okrScore={okrScore}
           selectedFY={selectedFY}
+          selectedFunction={selectedFunction}
           pipelineCoverage={pipelineCoverage}
         />
       )}
@@ -2055,10 +2282,10 @@ function DashboardContent() {
               display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
               zIndex: 1,
             }}>✕</button>
-            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 12 }}>🎯 KAM OKR — Balanced Scorecard</h3>
+            <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 12 }}>🎯 {selectedFunction || 'KAM'} OKR — Balanced Scorecard</h3>
             <img
-              src="./kam-balanced-scorecard.jpg"
-              alt="KAM Balanced Scorecard"
+              src={selectedFunction === 'SALES' ? './sales-balanced-scorecard.jpg' : './kam-balanced-scorecard.jpg'}
+              alt={`${selectedFunction || 'KAM'} Balanced Scorecard`}
               style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
             />
           </div>

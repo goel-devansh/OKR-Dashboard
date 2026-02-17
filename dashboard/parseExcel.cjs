@@ -77,12 +77,14 @@ function parseExcelData(filePath) {
         'NDR': 'ndr',
         'GDR': 'gdr',
         'NPS Score': 'nps',
+        'Sales Capacity Achievement': 'salesCapacity',
       };
 
       const unitMap = {
         'ndr': 'x',
         'gdr': 'x',
         'nps': '',
+        'salesCapacity': '',
       };
 
       let openPipeline = 0;
@@ -132,7 +134,13 @@ function parseExcelData(filePath) {
       data.quarterlyHeroStories = parseQuarterlySheet(heroSheet);
     }
 
-    // -- 6. Quarterly ARR & Service Revenue --
+    // -- 5b. Quarterly New Logos (Sales) --
+    const newLogosSheet = workbook.Sheets['Quarterly New Logos'];
+    if (newLogosSheet) {
+      data.quarterlyNewLogos = parseQuarterlySheet(newLogosSheet);
+    }
+
+    // -- 6. Quarterly ARR & Service Revenue (KAM) or Quarterly ARR (Sales) --
     const quarterlyArrSrvSheet = workbook.Sheets['Quarterly ARR & Service Rev'];
     if (quarterlyArrSrvSheet) {
       const rows = XLSX.utils.sheet_to_json(quarterlyArrSrvSheet, { header: 1, defval: '' });
@@ -156,6 +164,12 @@ function parseExcelData(filePath) {
           percentage: parseNum(row[3]) > 0 ? parseNum(row[4]) / parseNum(row[3]) : 0,
         });
       }
+    } else {
+      // Try simpler 3-column "Quarterly ARR" sheet (Sales format)
+      const quarterlyArrSheet = workbook.Sheets['Quarterly ARR'];
+      if (quarterlyArrSheet) {
+        data.quarterlyARR = parseQuarterlySheet(quarterlyArrSheet);
+      }
     }
 
     // -- 7. Account Owners --
@@ -170,8 +184,8 @@ function parseExcelData(filePath) {
         data.accountOwnerPerformance.push({
           name: String(row[0]).trim(),
           arrAchievement: parseNum(row[1]),
-          billing: parseNum(row[2]),
-          collection: parseNum(row[3]),
+          billing: (row[2] !== undefined && row[2] !== '') ? parseNum(row[2]) : null,
+          collection: (row[3] !== undefined && row[3] !== '') ? parseNum(row[3]) : null,
         });
       }
     }
@@ -212,6 +226,17 @@ function parseExcelData(filePath) {
         totalTarget,
         totalAchievement,
         achievementPercentage: totalTarget > 0 ? totalAchievement / totalTarget : 0,
+      };
+    }
+
+    // -- Compute New Logos totals --
+    if (data.quarterlyNewLogos) {
+      const nlAchTotal = data.quarterlyNewLogos.reduce((s, q) => s + q.achievement, 0);
+      const nlTarTotal = data.quarterlyNewLogos.reduce((s, q) => s + q.target, 0);
+      data.newLogosTotals = {
+        totalTarget: nlTarTotal,
+        totalAchievement: nlAchTotal,
+        achievementPercentage: nlTarTotal > 0 ? nlAchTotal / nlTarTotal : 0,
       };
     }
 
