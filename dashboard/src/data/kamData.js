@@ -113,8 +113,8 @@ export const pipelineCoverage = {
 
 // Default OKR Weightages (editable from Excel)
 export const defaultWeightages = {
-  arr: { label: 'ARR', weight: 25 },
-  serviceRev: { label: 'Service Revenue', weight: 20 },
+  arr: { label: 'ARR', weight: 20 },
+  serviceRev: { label: 'Service Revenue', weight: 15 },
   ndr: { label: 'NDR', weight: 10 },
   gdr: { label: 'GDR', weight: 10 },
   nps: { label: 'NPS Score', weight: 5 },
@@ -122,5 +122,5 @@ export const defaultWeightages = {
   collection: { label: 'On-time Collection', weight: 10 },
   qbr: { label: 'QBRs Held', weight: 3 },
   heroStories: { label: 'Hero Stories', weight: 2 },
-  pipelineCoverage: { label: 'Pipeline Coverage', weight: 0 },
+  pipelineCoverage: { label: 'Pipeline Coverage', weight: 10 },
 };

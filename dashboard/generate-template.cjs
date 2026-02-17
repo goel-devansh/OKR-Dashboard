@@ -226,8 +226,8 @@ if (isKAM) {
     ['OKR Weightages (Must total 100)', '', ''],
     ['', '', ''],
     ['Metric Key', 'Metric Label', 'Weight (%)'],
-    ['arr', 'ARR', 25],
-    ['serviceRev', 'Service Revenue', 20],
+    ['arr', 'ARR', 20],
+    ['serviceRev', 'Service Revenue', 15],
     ['ndr', 'NDR', 10],
     ['gdr', 'GDR', 10],
     ['nps', 'NPS Score', 5],
@@ -235,7 +235,7 @@ if (isKAM) {
     ['collection', 'On-time Collection', 10],
     ['qbr', 'QBRs Held', 3],
     ['heroStories', 'Hero Stories', 2],
-    ['pipelineCoverage', 'Pipeline Coverage', 0],
+    ['pipelineCoverage', 'Pipeline Coverage', 10],
   ];
   const ws8 = XLSX.utils.aoa_to_sheet(weightageData);
   ws8['!cols'] = [{ wch: 18 }, { wch: 22 }, { wch: 14 }];
