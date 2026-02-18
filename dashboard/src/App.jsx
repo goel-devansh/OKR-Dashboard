@@ -861,6 +861,12 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                 </td>
               </tr>
             ))}
+            <tr style={{ borderTop: '2px solid #1a1a2e', background: '#f1f5f9' }}>
+              <td style={{ padding: '8px 12px', fontWeight: 800, color: '#1a1a2e' }}>Total</td>
+              <td style={{ padding: '8px 12px', textAlign: 'right' }}>
+                <span style={{ fontWeight: 800, color: '#1a1a2e' }}>₹{Number(total).toFixed(1)} {unit}</span>
+              </td>
+            </tr>
           </tbody>
         </table>
       </div>
