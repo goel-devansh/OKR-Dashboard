@@ -640,9 +640,39 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
 
   const rows = Object.keys(weightages)
     .filter(key => allRowDefs[key])
-    .map(key => ({ key, ...allRowDefs[key] }));
+    .map(key => ({ key, ...allRowDefs[key] }))
+    .sort((a, b) => (weightages[b.key]?.weight || 0) - (weightages[a.key]?.weight || 0));
 
   const totalWeight = rows.reduce((s, r) => s + (weightages[r.key]?.weight || 0), 0);
+
+  const scorecardRef = React.useRef(null);
+  const [scorecardExporting, setScorecardExporting] = React.useState(false);
+
+  const handleScorecardPDF = async () => {
+    if (scorecardExporting || !scorecardRef.current) return;
+    setScorecardExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
+      const el = scorecardRef.current;
+      const canvas = await html2canvas(el, {
+        scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+      const pageW = pdf.internal.pageSize.getWidth();
+      const pageH = pdf.internal.pageSize.getHeight();
+      const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
+      const w = canvas.width * ratio;
+      const h = canvas.height * ratio;
+      pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
+      pdf.save(`${selectedFunction || 'KAM'}_Balanced_Scorecard_${selectedFY || 'FY'}.pdf`);
+    } catch (err) {
+      console.error('Scorecard PDF export failed:', err);
+    } finally {
+      setScorecardExporting(false);
+    }
+  };
 
   return (
     <div onClick={onClose} style={{
@@ -651,17 +681,25 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999, animation: 'fadeIn 0.2s ease',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div onClick={e => e.stopPropagation()} ref={scorecardRef} style={{
         background: '#fff', borderRadius: 16, padding: 28,
         width: '94vw', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto',
         position: 'relative', animation: 'slideUp 0.3s ease',
         boxShadow: '0 24px 48px rgba(0,0,0,0.2)',
       }}>
-        <button onClick={onClose} style={{
-          position: 'absolute', top: 14, right: 14, width: 34, height: 34, borderRadius: 8,
-          border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
-        }}>✕</button>
+        <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', gap: 8 }}>
+          <button onClick={handleScorecardPDF} disabled={scorecardExporting} style={{
+            height: 34, paddingInline: 12, borderRadius: 8,
+            border: '1px solid rgba(232,31,118,0.4)', background: scorecardExporting ? '#f1f5f9' : 'rgba(232,31,118,0.08)',
+            fontSize: 12, fontWeight: 600, cursor: scorecardExporting ? 'default' : 'pointer',
+            display: 'flex', alignItems: 'center', gap: 5, color: '#E81F76', transition: 'all 0.2s',
+          }}>{scorecardExporting ? '⏳ Exporting…' : '⬇ Download PDF'}</button>
+          <button onClick={onClose} style={{
+            width: 34, height: 34, borderRadius: 8,
+            border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b',
+          }}>✕</button>
+        </div>
 
         <h3 style={{ fontSize: 20, fontWeight: 700, color: '#1a1a2e', marginBottom: 4 }}>📊 {selectedFunction || 'KAM'} Balanced Scorecard</h3>
         <p style={{ fontSize: 13, color: '#94a3b8', marginBottom: 16 }}>{selectedFY || 'FY'} — Live from dashboard data</p>

@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Windows NUL device file (created by > nul redirects)
+nul
+NUL
