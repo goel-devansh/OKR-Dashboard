@@ -2416,6 +2416,43 @@ function DashboardContent() {
           </MetricSummaryCard>
           )}
 
+          {/* RAG Metrics Summary Card — fills empty grid slot */}
+          {selectedFunction === 'SALES' && (weightages.capabilityAI || weightages.accountStrategy || weightages.archDomain) && (
+          <div style={{
+            background: '#fff', borderRadius: 12, padding: 14,
+            border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>Qualitative Metrics (RAG)</div>
+            {[
+              { key: 'capabilityAI', label: 'Capability Dev (AI)' },
+              { key: 'accountStrategy', label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy' },
+              { key: 'archDomain', label: 'Arch & Domain Knowledge' },
+            ].filter(m => weightages[m.key]).map(m => {
+              const val = ragMetrics?.[m.key] || 'red';
+              const colors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
+              const labels = { red: 'Red', amber: 'Amber', green: 'Green' };
+              return (
+                <div key={m.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{m.label}</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Object.entries(labels).map(([v, lbl]) => (
+                      <button key={v} onClick={() => updateRAG(m.key, v)} style={{
+                        padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
+                        border: `1.5px solid ${colors[v]}`, cursor: 'pointer', transition: 'all 0.2s',
+                        background: val === v ? colors[v] : 'transparent',
+                        color: val === v ? '#fff' : colors[v],
+                      }}>{lbl}</button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 'auto', paddingTop: 8, fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
+              Wt: {(weightages.capabilityAI?.weight || 0) + (weightages.accountStrategy?.weight || 0) + (weightages.archDomain?.weight || 0)}% combined
+            </div>
+          </div>
+          )}
+
           {/* Grid cards rendered above — count varies by function */}
         </div>
       </div>
