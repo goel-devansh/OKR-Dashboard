@@ -35,7 +35,16 @@
       "Bash(netstat:*)",
       "Bash(findstr:*)",
       "Bash(git remote update:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\nFix flash of wrong layout when switching KAM/Sales\n\nClear stale data and show loading state during function switch\nto prevent briefly rendering the previous function''s layout.\n\nCo-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(git check-ignore:*)",
+      "Bash(git rm:*)",
+      "Bash(xcopy:*)",
+      "Bash(robocopy:*)",
+      "Bash(ollama list:*)"
     ]
   }
 }

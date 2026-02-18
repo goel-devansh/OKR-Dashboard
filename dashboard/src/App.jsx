@@ -8,6 +8,7 @@ import {
   Legend, ReferenceLine, PieChart, Pie
 } from 'recharts';
 import { formatCrore, getAchievementColor } from './utils/helpers';
+import ReactMarkdown from 'react-markdown';
 import './App.css';
 
 /* ================================================================
@@ -2516,7 +2517,326 @@ function DashboardContent() {
           </div>
         </div>
       )}
+
+      {/* AI Chat Bubble */}
+      <ChatBubble selectedFunction={selectedFunction} selectedFY={selectedFY} />
     </div>
+  );
+}
+
+/* ================================================================
+   AI Chat Bubble (Floating, Ollama-powered)
+   ================================================================ */
+function ChatBubble({ selectedFunction, selectedFY }) {
+  const [isOpen, setIsOpen] = useState(false);
+  const [messages, setMessages] = useState([]);
+  const [input, setInput] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const messagesEndRef = useRef(null);
+  const inputRef = useRef(null);
+
+  const scrollToBottom = useCallback(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, []);
+
+  useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
+  useEffect(() => { if (isOpen && inputRef.current) inputRef.current.focus(); }, [isOpen]);
+
+  const suggestedQuestions = [
+    '📊 CEO Summary',
+    '⚠️ Underperforming metrics',
+    '🏆 Top performers',
+    '💰 Billing vs Collection',
+  ];
+
+  const sendMessage = useCallback(async (text) => {
+    const userMsg = text || input.trim();
+    if (!userMsg || isStreaming) return;
+
+    setInput('');
+    const newMessages = [...messages, { role: 'user', content: userMsg }];
+    setMessages([...newMessages, { role: 'assistant', content: '', streaming: true }]);
+    setIsStreaming(true);
+
+    try {
+      const response = await fetch('http://localhost:3001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: userMsg,
+          function: selectedFunction,
+          fy: selectedFY,
+          history: newMessages.slice(-6),
+        }),
+      });
+
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const data = line.slice(6).trim();
+          if (data === '[DONE]') break;
+
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.token) {
+              fullText += parsed.token;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: fullText, streaming: true };
+                return updated;
+              });
+            }
+            if (parsed.error) {
+              fullText = `❌ ${parsed.error}`;
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = { role: 'assistant', content: fullText, streaming: false };
+                return updated;
+              });
+              setIsStreaming(false);
+              return;
+            }
+          } catch (e) {}
+        }
+      }
+
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: 'assistant', content: fullText || 'No response from AI.', streaming: false };
+        return updated;
+      });
+    } catch (err) {
+      const errorMsg = err.message.includes('Failed to fetch')
+        ? '❌ Cannot connect to server. Make sure the backend is running: `npm run server`'
+        : `❌ Error: ${err.message}`;
+      setMessages(prev => {
+        const updated = [...prev];
+        updated[updated.length - 1] = { role: 'assistant', content: errorMsg, streaming: false };
+        return updated;
+      });
+    }
+    setIsStreaming(false);
+  }, [input, isStreaming, messages, selectedFunction, selectedFY]);
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }, [sendMessage]);
+
+  // Styles
+  const bubbleBtn = {
+    position: 'fixed', bottom: 24, right: 24, zIndex: 10000,
+    width: 56, height: 56, borderRadius: '50%',
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
+  };
+
+  const chatWindow = {
+    position: 'fixed', bottom: 90, right: 24, zIndex: 10000,
+    width: 400, height: 520, borderRadius: 16,
+    background: '#fff', border: '1px solid #e2e8f0',
+    boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
+    display: 'flex', flexDirection: 'column', overflow: 'hidden',
+    animation: 'chatSlideUp 0.3s ease-out',
+  };
+
+  const headerStyle = {
+    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+    color: '#fff', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+  };
+
+  const msgArea = {
+    flex: 1, overflowY: 'auto', padding: '16px',
+    display: 'flex', flexDirection: 'column', gap: 12,
+    background: '#f8fafc',
+  };
+
+  const inputArea = {
+    padding: '12px 16px', borderTop: '1px solid #e2e8f0',
+    display: 'flex', gap: 8, background: '#fff',
+  };
+
+  return (
+    <>
+      {/* Chat animation keyframes */}
+      <style>{`
+        @keyframes chatSlideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .chat-msg-md p { margin: 0 0 8px 0; }
+        .chat-msg-md p:last-child { margin-bottom: 0; }
+        .chat-msg-md ul, .chat-msg-md ol { margin: 4px 0; padding-left: 20px; }
+        .chat-msg-md li { margin: 2px 0; }
+        .chat-msg-md strong { color: #1a1a2e; }
+        .chat-msg-md code { background: #f1f5f9; padding: 1px 4px; borderRadius: 3px; fontSize: 12px; }
+        .chat-bubble-btn:hover { transform: scale(1.1); box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5); }
+        .chat-input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15); }
+        .chat-suggested:hover { background: #667eea !important; color: #fff !important; }
+        .chat-msg-area::-webkit-scrollbar { width: 6px; }
+        .chat-msg-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+      `}</style>
+
+      {/* Floating chat bubble button */}
+      {!isOpen && (
+        <button
+          className="chat-bubble-btn"
+          onClick={() => setIsOpen(true)}
+          style={bubbleBtn}
+          title="Ask AI about your dashboard"
+        >
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </svg>
+        </button>
+      )}
+
+      {/* Chat window */}
+      {isOpen && (
+        <div style={chatWindow}>
+          {/* Header */}
+          <div style={headerStyle}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </svg>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 15 }}>AI Assistant</div>
+                <div style={{ fontSize: 11, opacity: 0.85 }}>{selectedFunction} • {selectedFY}</div>
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {messages.length > 0 && (
+                <button
+                  onClick={() => setMessages([])}
+                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}
+                  title="Clear chat"
+                >Clear</button>
+              )}
+              <button
+                onClick={() => setIsOpen(false)}
+                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}
+              >✕</button>
+            </div>
+          </div>
+
+          {/* Messages */}
+          <div className="chat-msg-area" style={msgArea}>
+            {messages.length === 0 && (
+              <div style={{ textAlign: 'center', padding: '20px 10px' }}>
+                <div style={{ fontSize: 40, marginBottom: 12 }}>🤖</div>
+                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e', marginBottom: 6 }}>
+                  Hi! I'm your dashboard AI assistant.
+                </div>
+                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
+                  Ask me anything about your {selectedFunction} {selectedFY} metrics.
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                  {suggestedQuestions.map((q) => (
+                    <button
+                      key={q}
+                      className="chat-suggested"
+                      onClick={() => sendMessage(q)}
+                      style={{
+                        background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20,
+                        padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#475569',
+                        transition: 'all 0.2s',
+                      }}
+                    >{q}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {messages.map((msg, i) => (
+              <div
+                key={i}
+                style={{
+                  display: 'flex',
+                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+                }}
+              >
+                <div style={{
+                  maxWidth: '85%',
+                  padding: '10px 14px',
+                  borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                  background: msg.role === 'user'
+                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                    : '#fff',
+                  color: msg.role === 'user' ? '#fff' : '#1e293b',
+                  fontSize: 13, lineHeight: 1.5,
+                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
+                  border: msg.role === 'user' ? 'none' : '1px solid #e2e8f0',
+                }}>
+                  {msg.role === 'user' ? (
+                    <span>{msg.content}</span>
+                  ) : (
+                    <div className="chat-msg-md">
+                      <ReactMarkdown>{msg.content || (msg.streaming ? '⏳ Thinking...' : '')}</ReactMarkdown>
+                      {msg.streaming && msg.content && (
+                        <span style={{ display: 'inline-block', width: 6, height: 14, background: '#667eea', marginLeft: 2, animation: 'blink 1s infinite', verticalAlign: 'text-bottom' }} />
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Input */}
+          <div style={inputArea}>
+            <input
+              ref={inputRef}
+              className="chat-input"
+              type="text"
+              placeholder="Ask about your metrics..."
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={isStreaming}
+              style={{
+                flex: 1, padding: '10px 14px', borderRadius: 10,
+                border: '1px solid #e2e8f0', fontSize: 13,
+                transition: 'border-color 0.2s, box-shadow 0.2s',
+              }}
+            />
+            <button
+              onClick={() => sendMessage()}
+              disabled={isStreaming || !input.trim()}
+              style={{
+                width: 40, height: 40, borderRadius: 10, border: 'none',
+                background: isStreaming || !input.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                color: '#fff', cursor: isStreaming || !input.trim() ? 'not-allowed' : 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                transition: 'background 0.2s',
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Blink cursor animation */}
+      <style>{`@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }`}</style>
+    </>
   );
 }
 

@@ -306,6 +306,279 @@ app.post('/api/rag', (req, res) => {
   }
 });
 
+// ─── AI Chat Endpoint (Google Gemini + SSE Streaming) ────────
+const GEMINI_API_KEY = 'AIzaSyA9iMaCfd8rXDI3xloPsn_reC6DoSkvDQk';
+const GEMINI_MODEL = 'gemini-2.5-flash';
+const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+
+// Build data section for a single function+FY dataset
+function buildDataSection(data) {
+  if (!data) return '';
+  const lines = [];
+
+  // Annual Metrics
+  if (data.annualMetrics) {
+    lines.push(`\n### Annual KPI Metrics:`);
+    for (const [key, m] of Object.entries(data.annualMetrics)) {
+      const pct = m.targetFY26 ? ((m.achievementTillDate / m.targetFY26) * 100).toFixed(1) : 'N/A';
+      lines.push(`- ${m.label}: Target=${m.targetFY26}${m.unit || ''}, Achievement=${m.achievementTillDate}${m.unit || ''} (${pct}%)`);
+    }
+  }
+
+  // Billing
+  if (data.monthlyBilling && data.billingTotals) {
+    lines.push(`\n### Monthly Billing (Target vs Achievement in Cr):`);
+    for (const m of data.monthlyBilling) {
+      if (m.achievement !== null && m.achievement !== undefined) {
+        lines.push(`- ${m.month}: Target=${m.target}, Achievement=${m.achievement} (${(m.percentage * 100).toFixed(1)}%)`);
+      }
+    }
+    lines.push(`- TOTAL: Target=${data.billingTotals.totalTarget}, Achievement=${data.billingTotals.totalAchievement} (${(data.billingTotals.achievementPercentage * 100).toFixed(1)}%)`);
+  }
+
+  // Collection
+  if (data.monthlyCollection && data.collectionTotals) {
+    lines.push(`\n### Monthly Collection (Target vs Achievement in Cr):`);
+    for (const m of data.monthlyCollection) {
+      if (m.achievement !== null && m.achievement !== undefined) {
+        lines.push(`- ${m.month}: Target=${m.target}, Achievement=${m.achievement} (${(m.percentage * 100).toFixed(1)}%)`);
+      }
+    }
+    lines.push(`- TOTAL: Target=${data.collectionTotals.totalTarget}, Achievement=${data.collectionTotals.totalAchievement} (${(data.collectionTotals.achievementPercentage * 100).toFixed(1)}%)`);
+  }
+
+  // Quarterly metrics
+  const qMetrics = [
+    ['QBRs', data.quarterlyQBRs],
+    ['New Logos', data.quarterlyNewLogos],
+    ['Hero Stories', data.quarterlyHeroStories],
+    ['ARR', data.quarterlyARR],
+    ['Service Revenue', data.quarterlyServiceRev],
+  ];
+  for (const [name, arr] of qMetrics) {
+    if (arr && arr.length > 0) {
+      lines.push(`\n### Quarterly ${name}:`);
+      for (const q of arr) {
+        lines.push(`- ${q.quarter}: Target=${q.target}, Achievement=${q.achievement} (${(q.percentage * 100).toFixed(1)}%)`);
+      }
+    }
+  }
+
+  // Account Owner Performance
+  if (data.accountOwnerPerformance && data.accountOwnerPerformance.length > 0) {
+    lines.push(`\n### Account Owner Performance:`);
+    for (const o of data.accountOwnerPerformance) {
+      lines.push(`- ${o.name}: ARR Achievement=${o.arrAchievement}, Billing=${o.billing} Cr, Collection=${o.collection} Cr`);
+    }
+  }
+
+  // Pipeline Coverage
+  if (data.pipelineCoverage) {
+    const pc = data.pipelineCoverage;
+    lines.push(`\n### Pipeline Coverage:`);
+    lines.push(`- Open Pipeline: ${pc.openPipeline} Cr`);
+    lines.push(`- Remaining Target: ${pc.remainingTarget} Cr`);
+    lines.push(`- Coverage Ratio: ${pc.coverage}x`);
+  }
+
+  // Weightages
+  if (data.weightages) {
+    lines.push(`\n### OKR Weightages:`);
+    for (const [key, w] of Object.entries(data.weightages)) {
+      lines.push(`- ${w.label}: ${w.weight}%`);
+    }
+  }
+
+  // RAG Metrics
+  if (data.ragMetrics) {
+    lines.push(`\n### RAG (Red/Amber/Green) Metrics:`);
+    for (const [key, val] of Object.entries(data.ragMetrics)) {
+      lines.push(`- ${key}: ${val.toUpperCase()}`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function buildSystemPrompt(currentFunc, currentFY, allData) {
+  const funcs = Object.keys(allData);
+  if (funcs.length === 0) return `You are an AI assistant for the OKR Dashboard. No data is currently loaded.`;
+
+  const lines = [];
+  lines.push(`You are an AI assistant for the OKR Dashboard.`);
+  lines.push(`The user is currently viewing the ${currentFunc} dashboard for ${currentFY}.`);
+  lines.push(`You have access to ALL business functions and fiscal years loaded in the system.`);
+  lines.push(`You can answer questions about any function (${funcs.join(', ')}) and any FY.`);
+  lines.push(`You can also compare metrics across functions and fiscal years.`);
+  lines.push(`Be concise, use bullet points, and reference specific numbers from the data below.`);
+  lines.push(`If the data doesn't contain the answer, say so clearly.`);
+  lines.push(`Use ₹ for currency values. Values are in Crores (Cr) unless stated otherwise.`);
+  lines.push(`When the user asks a question without specifying a function or FY, assume they mean ${currentFunc} ${currentFY}.`);
+
+  // Include data for ALL functions and FYs
+  for (const funcName of funcs) {
+    const fyData = allData[funcName];
+    if (!fyData) continue;
+    const fyKeys = Object.keys(fyData).sort();
+    for (const fyKey of fyKeys) {
+      const data = fyData[fyKey];
+      if (!data) continue;
+      const isCurrent = (funcName === currentFunc && fyKey === currentFY);
+      lines.push(`\n${'='.repeat(50)}`);
+      lines.push(`## ${funcName} — ${fyKey}${isCurrent ? ' (CURRENTLY VIEWING)' : ''}`);
+      lines.push(`${'='.repeat(50)}`);
+      lines.push(buildDataSection(data));
+    }
+  }
+
+  return lines.join('\n');
+}
+
+app.post('/api/chat', async (req, res) => {
+  const { message, function: funcName, fy, history } = req.body || {};
+
+  if (!message) {
+    return res.status(400).json({ error: 'Missing "message" field' });
+  }
+
+  const func = (funcName || defaultFunction || 'KAM').toUpperCase();
+  const fyKey = fy || computeDefaultYear(getAvailableYears(func)) || 'FY26';
+
+  const systemPrompt = buildSystemPrompt(func, fyKey, cachedData);
+
+  // Build Gemini contents array with conversation history
+  const contents = [];
+  if (history && Array.isArray(history)) {
+    for (const msg of history.slice(-6)) { // Keep last 6 messages for context
+      contents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }],
+      });
+    }
+  }
+  contents.push({
+    role: 'user',
+    parts: [{ text: message }],
+  });
+
+  // Set SSE headers
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+
+    const geminiRes = await fetch(GEMINI_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      signal: controller.signal,
+      body: JSON.stringify({
+        system_instruction: {
+          parts: [{ text: systemPrompt }],
+        },
+        contents,
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+        },
+      }),
+    });
+
+    clearTimeout(timeout);
+
+    if (!geminiRes.ok) {
+      const errBody = await geminiRes.text();
+      console.error('Gemini API error:', geminiRes.status, errBody);
+      res.write(`data: ${JSON.stringify({ error: `Gemini error: ${geminiRes.status}` })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // Parse Gemini SSE stream using Web ReadableStream API
+    const reader = geminiRes.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let aborted = false;
+
+    // Handle client disconnect
+    req.on('close', () => {
+      aborted = true;
+      reader.cancel();
+    });
+
+    // Read stream chunks
+    const processStream = async () => {
+      try {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done || aborted) break;
+
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split('\n');
+          buffer = lines.pop(); // Keep incomplete line in buffer
+
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+            const jsonStr = trimmed.slice(6); // Remove "data: " prefix
+            if (!jsonStr) continue;
+
+            try {
+              const parsed = JSON.parse(jsonStr);
+              // Gemini response: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
+              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+              }
+            } catch (e) {
+              // skip malformed lines
+            }
+          }
+        }
+
+        // Process any remaining buffer
+        if (buffer.trim()) {
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+              }
+            } catch (e) {}
+          }
+        }
+      } catch (err) {
+        if (!aborted) {
+          console.error('Gemini stream error:', err);
+          if (!res.writableEnded) {
+            res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+          }
+        }
+      } finally {
+        if (!res.writableEnded) {
+          res.write('data: [DONE]\n\n');
+          res.end();
+        }
+      }
+    };
+
+    processStream();
+
+  } catch (err) {
+    console.error('Chat API error:', err);
+    const errorMsg = `Chat error: ${err.message}`;
+    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    res.write('data: [DONE]\n\n');
+    res.end();
+  }
+});
+
 // ─── HTTP + WebSocket Server ─────────────────────────────────
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });
