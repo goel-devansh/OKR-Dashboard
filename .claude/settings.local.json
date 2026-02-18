@@ -33,7 +33,9 @@
       "Bash(taskkill:*)",
       "Bash(start:*)",
       "Bash(netstat:*)",
-      "Bash(findstr:*)"
+      "Bash(findstr:*)",
+      "Bash(git remote update:*)",
+      "Bash(git fetch:*)"
     ]
   }
 }
