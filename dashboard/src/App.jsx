@@ -1912,7 +1912,7 @@ function DashboardContent() {
     heroStories: { label: 'Hero Stories', drill: 'heroStories' },
     newLogos: { label: '# of New Logos', drill: 'newLogos' },
     salesCapacity: { label: 'Sales Capacity', drill: 'salesCapacity' },
-    capabilityAI: { label: 'Capability Dev (AI)', isRAG: true },
+    capabilityAI: { label: 'Capability Development in AI', isRAG: true },
     accountStrategy: { label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy', isRAG: true },
     archDomain: { label: 'Arch & Domain Knowledge', isRAG: true },
   };
@@ -2424,7 +2424,7 @@ function DashboardContent() {
           }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>Qualitative Metrics (RAG)</div>
             {[
-              { key: 'capabilityAI', label: 'Capability Dev (AI)' },
+              { key: 'capabilityAI', label: 'Capability Development in AI' },
               { key: 'accountStrategy', label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy' },
               { key: 'archDomain', label: 'Arch & Domain Knowledge' },
             ].filter(m => weightages[m.key]).map(m => {
