@@ -242,6 +242,8 @@ export function useKamData() {
 
   // Change function — switches function, re-fetches years & data
   const changeFunction = useCallback((func) => {
+    setLoading(true); // Show loading state during switch
+    setData(null);    // Clear stale data to prevent flash of wrong layout
     setSelectedFunction(func);
     fetchYearsForFunction(func);
   }, [fetchYearsForFunction]);
