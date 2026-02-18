@@ -295,7 +295,40 @@ const OKRScoreGauge = ({ score, size = 160 }) => {
 /* ================================================================
    Metric Tile — compact clickable row for left sidebar
    ================================================================ */
-const MetricTile = ({ label, achievement, weight, onClick, isCoverage }) => {
+const MetricTile = ({ label, achievement, weight, onClick, isCoverage, isRAG, ragValue, onRAGChange }) => {
+  // RAG (Red/Amber/Green) metric: user-selectable buttons
+  if (isRAG) {
+    const ragColors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
+    const ragLabels = { red: 'R', amber: 'A', green: 'G' };
+    const currentColor = ragColors[ragValue] || ragColors.red;
+    return (
+      <div style={{
+        display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
+        background: 'rgba(255,255,255,0.04)', transition: 'background 0.2s',
+        borderLeft: `3px solid ${currentColor}`,
+      }}>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+            <span style={{ fontSize: 10.5, fontWeight: 600, color: '#cbd5e1', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1 }}>{label}</span>
+            <div style={{ display: 'flex', gap: 3, marginLeft: 6 }}>
+              {Object.entries(ragLabels).map(([val, lbl]) => (
+                <button key={val} onClick={(e) => { e.stopPropagation(); onRAGChange && onRAGChange(val); }}
+                  style={{
+                    width: 18, height: 18, borderRadius: '50%', border: `2px solid ${ragColors[val]}`,
+                    background: ragValue === val ? ragColors[val] : 'transparent',
+                    color: ragValue === val ? '#fff' : ragColors[val],
+                    fontSize: 8, fontWeight: 800, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    padding: 0, lineHeight: 1, transition: 'all 0.2s',
+                  }}>{lbl}</button>
+              ))}
+            </div>
+          </div>
+          <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 1 }}>Wt: {weight}%</div>
+        </div>
+      </div>
+    );
+  }
+
   // Pipeline coverage: displayed as Nx ratio, not percentage
   if (isCoverage) {
     const covColor = achievement >= 3 ? '#10b981' : achievement >= 1 ? '#f59e0b' : '#ef4444';
@@ -596,7 +629,7 @@ const KeyTakeawaysModal = ({ takeaways, onClose }) => {
    ================================================================ */
 const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collectionTotals,
   quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, newLogosTotals, quarterlyARR, quarterlyServiceRev,
-  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY, selectedFunction, pipelineCoverage }) => {
+  weightages, metricAchievements, billingTimeliness, collectionTimeliness, okrScore, selectedFY, selectedFunction, pipelineCoverage, ragMetrics }) => {
 
   const fmt = (v, type) => {
     if (type === 'cr') return `₹${Number(v).toFixed(1)} Cr`;
@@ -636,6 +669,9 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
     pipelineCoverage: { label: 'Pipeline Coverage', target: '3x', achievement: `${(pipelineCoverage?.coverage || 0).toFixed(1)}x`, pct: metricAchievements.pipelineCoverage, isCoverage: true },
     newLogos: { label: '# of New Logos', target: String(Math.round(nlTarTotal)), achievement: String(Math.round(nlAchTotal)), pct: metricAchievements.newLogos },
     salesCapacity: { label: 'Sales Capacity Achievement', target: String(Math.round(annualMetrics?.salesCapacity?.targetFY26 || 0)), achievement: String(Math.round(annualMetrics?.salesCapacity?.achievementTillDate || 0)), pct: metricAchievements.salesCapacity },
+    capabilityAI: { label: 'Capability Development in AI', target: 'Green', achievement: ragMetrics?.capabilityAI || 'red', pct: metricAchievements.capabilityAI, isRAG: true },
+    accountStrategy: { label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy', target: 'Green', achievement: ragMetrics?.accountStrategy || 'red', pct: metricAchievements.accountStrategy, isRAG: true },
+    archDomain: { label: 'Architecture & Domain Knowledge', target: 'Green', achievement: ragMetrics?.archDomain || 'red', pct: metricAchievements.archDomain, isRAG: true },
   };
 
   const rows = Object.keys(weightages)
@@ -735,6 +771,35 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
                           display: 'inline-block', padding: '2px 10px', borderRadius: 12,
                           background: `${covColor}18`, color: covColor, fontWeight: 700, fontSize: 12,
                         }}>{covVal.toFixed(1)}x</span>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
+                    </tr>
+                  );
+                }
+                // RAG metrics: display colored badge
+                if (r.isRAG) {
+                  const ragColors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
+                  const ragLabels = { red: 'Red', amber: 'Amber', green: 'Green' };
+                  const ragVal = r.achievement || 'red';
+                  const ragColor = ragColors[ragVal] || ragColors.red;
+                  const ragScore = r.pct || 0;
+                  const weightedScore = Math.min(Math.max(ragScore, 0), 1.0) * weight;
+                  return (
+                    <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                      <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '2px 10px', borderRadius: 12,
+                          background: `${ragColor}18`, color: ragColor, fontWeight: 700, fontSize: 12,
+                        }}>{ragLabels[ragVal] || 'Red'}</span>
+                      </td>
+                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                        <span style={{
+                          display: 'inline-block', padding: '2px 10px', borderRadius: 12,
+                          background: `${ragColor}18`, color: ragColor, fontWeight: 700, fontSize: 12,
+                        }}>{(ragScore * 100).toFixed(0)}%</span>
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
                     </tr>
@@ -1667,9 +1732,52 @@ function DashboardContent() {
     quarterlyNewLogos, newLogosTotals,
     billingTotals, collectionTotals,
     weightages, quarterlyARR, quarterlyServiceRev, pipelineCoverage,
+    ragMetrics: serverRagMetrics,
     availableFunctions, selectedFunction, changeFunction,
     availableYears, selectedFY, changeFY,
   } = useKamDataContext();
+
+  // RAG metrics: merge server data + localStorage fallback + optimistic local state
+  const [localRag, setLocalRag] = useState({});
+
+  // Load from localStorage on mount and when function/FY changes
+  const lsKey = `rag_${selectedFunction}_${selectedFY}`;
+  const storedRag = useMemo(() => {
+    try { return JSON.parse(localStorage.getItem(lsKey) || '{}'); }
+    catch { return {}; }
+  }, [lsKey, localRag]); // re-read when localRag changes (because we write to LS on save)
+
+  // Merge: server data < localStorage < optimistic local state
+  const ragMetrics = { ...(serverRagMetrics || {}), ...storedRag, ...localRag };
+
+  // Reset optimistic state when server sends fresh data (WebSocket update)
+  useEffect(() => { setLocalRag({}); }, [serverRagMetrics]);
+
+  const updateRAG = useCallback(async (key, value) => {
+    // Optimistic local update
+    setLocalRag(prev => ({ ...prev, [key]: value }));
+
+    // Always save to localStorage immediately (so it persists on refresh)
+    const currentLsKey = `rag_${selectedFunction}_${selectedFY}`;
+    const stored = JSON.parse(localStorage.getItem(currentLsKey) || '{}');
+    stored[key] = value;
+    localStorage.setItem(currentLsKey, JSON.stringify(stored));
+
+    // Also try to save to server (Excel) for persistence across users
+    try {
+      const resp = await fetch('http://localhost:3001/api/rag', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ function: selectedFunction, fy: selectedFY, key, value }),
+      });
+      if (resp.ok) {
+        // Server saved successfully — clear localStorage for this key since Excel is source of truth
+        // (will be re-read from server on next load)
+      }
+    } catch {
+      // Server offline — localStorage already saved above, so data persists
+    }
+  }, [selectedFunction, selectedFY]);
 
   const [drillSection, setDrillSection] = useState(null);
   const [showTakeaways, setShowTakeaways] = useState(false);
@@ -1771,12 +1879,18 @@ function DashboardContent() {
     if (weightages.newLogos) raw.newLogos = safeDiv(nlAchTotal, nlTarTotal);
     if (weightages.salesCapacity) raw.salesCapacity = safeDiv(annualMetrics?.salesCapacity?.achievementTillDate || 0, annualMetrics?.salesCapacity?.targetFY26 || 1);
 
+    // RAG metrics: Red=0%, Amber=50%, Green=100%
+    const ragToScore = (v) => v === 'green' ? 1.0 : v === 'amber' ? 0.5 : 0.0;
+    if (weightages.capabilityAI) raw.capabilityAI = ragToScore(ragMetrics?.capabilityAI);
+    if (weightages.accountStrategy) raw.accountStrategy = ragToScore(ragMetrics?.accountStrategy);
+    if (weightages.archDomain) raw.archDomain = ragToScore(ragMetrics?.archDomain);
+
     const capped = {};
     for (const key of Object.keys(raw)) capped[key] = Math.min(Math.max(raw[key], 0), 1.0);
     let score = 0;
     for (const key of Object.keys(capped)) score += capped[key] * (weightages[key]?.weight || 0);
     return { okrScore: score, metricAchievements: raw };
-  }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, weightages, pipelineCoverage]);
+  }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, weightages, pipelineCoverage, ragMetrics]);
 
   /* ---------- Takeaways ---------- */
   const takeaways = useMemo(() =>
@@ -1798,6 +1912,9 @@ function DashboardContent() {
     heroStories: { label: 'Hero Stories', drill: 'heroStories' },
     newLogos: { label: '# of New Logos', drill: 'newLogos' },
     salesCapacity: { label: 'Sales Capacity', drill: 'salesCapacity' },
+    capabilityAI: { label: 'Capability Dev (AI)', isRAG: true },
+    accountStrategy: { label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy', isRAG: true },
+    archDomain: { label: 'Arch & Domain Knowledge', isRAG: true },
   };
   const metricTiles = Object.keys(weightages)
     .filter(key => metricTileConfig[key])
@@ -1808,6 +1925,8 @@ function DashboardContent() {
       weight: weightages[key]?.weight || 0,
       drill: metricTileConfig[key].drill,
       isCoverage: metricTileConfig[key].isCoverage || false,
+      isRAG: metricTileConfig[key].isRAG || false,
+      ragValue: ragMetrics?.[key] || 'red',
     }))
     .sort((a, b) => b.weight - a.weight);
 
@@ -1981,7 +2100,9 @@ function DashboardContent() {
             {metricTiles.map(tile => (
               <MetricTile key={tile.key} label={tile.label} achievement={tile.achievement}
                 weight={tile.weight} onClick={tile.drill ? () => openDrill(tile.drill) : undefined}
-                isCoverage={tile.isCoverage} />
+                isCoverage={tile.isCoverage}
+                isRAG={tile.isRAG} ragValue={tile.ragValue}
+                onRAGChange={tile.isRAG ? (val) => updateRAG(tile.key, val) : undefined} />
             ))}
           </div>
         </div>
@@ -2327,6 +2448,7 @@ function DashboardContent() {
           selectedFY={selectedFY}
           selectedFunction={selectedFunction}
           pipelineCoverage={pipelineCoverage}
+          ragMetrics={ragMetrics}
         />
       )}
       {showBalancedImg && (

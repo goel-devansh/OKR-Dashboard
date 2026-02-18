@@ -225,6 +225,87 @@ app.get('/api/health', (req, res) => {
   });
 });
 
+// POST /api/rag — Update a RAG metric value in the Excel file
+app.post('/api/rag', (req, res) => {
+  const { function: funcName, fy, key, value } = req.body || {};
+
+  if (!funcName || !fy || !key || !value) {
+    return res.status(400).json({ error: 'Missing required fields: function, fy, key, value' });
+  }
+
+  const validValues = ['red', 'amber', 'green'];
+  if (!validValues.includes(value.toLowerCase())) {
+    return res.status(400).json({ error: `Invalid value "${value}". Must be: red, amber, or green` });
+  }
+
+  const allFiles = discoverAllFiles();
+  const upperFunc = funcName.toUpperCase();
+  const filePath = allFiles[upperFunc] && allFiles[upperFunc][fy];
+
+  if (!filePath || !fs.existsSync(filePath)) {
+    return res.status(404).json({ error: `No Excel file found for ${upperFunc} ${fy}` });
+  }
+
+  try {
+    const buf = fs.readFileSync(filePath);
+    const workbook = XLSX.read(buf, { type: 'buffer' });
+
+    // Find or create RAG Metrics sheet
+    let ragSheet = workbook.Sheets['RAG Metrics'];
+    if (!ragSheet) {
+      // Create sheet with headers + default rows
+      const sheetData = [
+        ['Key', 'Label', 'Value'],
+        ['capabilityAI', 'Capability Development in AI', 'red'],
+        ['accountStrategy', 'Account Strategy', 'red'],
+        ['archDomain', 'Architecture & Domain Knowledge', 'red'],
+      ];
+      ragSheet = XLSX.utils.aoa_to_sheet(sheetData);
+      XLSX.utils.book_append_sheet(workbook, ragSheet, 'RAG Metrics');
+    }
+
+    // Read current data
+    const rows = XLSX.utils.sheet_to_json(ragSheet, { header: 1, defval: '' });
+
+    // Find the row with matching key and update value
+    let found = false;
+    for (let i = 1; i < rows.length; i++) {
+      if (String(rows[i][0] || '').trim() === key) {
+        rows[i][2] = value.toLowerCase();
+        found = true;
+        break;
+      }
+    }
+
+    if (!found) {
+      return res.status(404).json({ error: `RAG metric key "${key}" not found in sheet` });
+    }
+
+    // Write updated sheet back
+    const newRagSheet = XLSX.utils.aoa_to_sheet(rows);
+    newRagSheet['!cols'] = [{ wch: 20 }, { wch: 40 }, { wch: 10 }];
+    workbook.Sheets['RAG Metrics'] = newRagSheet;
+
+    XLSX.writeFile(workbook, filePath);
+    console.log(`RAG updated: ${upperFunc}/${fy} — ${key} = ${value}`);
+
+    // Re-parse and update cache
+    const freshData = parseExcelData(filePath);
+    if (freshData) {
+      if (!cachedData[upperFunc]) cachedData[upperFunc] = {};
+      cachedData[upperFunc][fy] = freshData;
+
+      // Broadcast to all WebSocket clients
+      broadcastFYUpdate(upperFunc, fy);
+    }
+
+    res.json({ success: true, function: upperFunc, fy, key, value: value.toLowerCase() });
+  } catch (err) {
+    console.error('RAG update error:', err);
+    res.status(500).json({ error: 'Failed to update RAG metric', details: err.message });
+  }
+});
+
 // ─── HTTP + WebSocket Server ─────────────────────────────────
 const server = http.createServer(app);
 const wss = new WebSocketServer({ server });

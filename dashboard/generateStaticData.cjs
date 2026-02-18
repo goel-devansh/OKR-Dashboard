@@ -116,7 +116,10 @@ function generateDataJS(data, funcName) {
 
   // IMPORTANT: server outputs "weightages" but useKamData.js expects "defaultWeightages"
   src += '// Default OKR Weightages\n';
-  src += `export const defaultWeightages = ${JSON.stringify(data.weightages || {}, null, 2)};\n`;
+  src += `export const defaultWeightages = ${JSON.stringify(data.weightages || {}, null, 2)};\n\n`;
+
+  src += '// Default RAG Metrics (user-entered Red/Amber/Green)\n';
+  src += `export const defaultRagMetrics = ${JSON.stringify(data.ragMetrics || { capabilityAI: 'red', accountStrategy: 'red', archDomain: 'red' }, null, 2)};\n`;
 
   return src;
 }

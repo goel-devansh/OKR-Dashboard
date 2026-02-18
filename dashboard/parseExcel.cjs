@@ -206,6 +206,18 @@ function parseExcelData(filePath) {
       }
     }
 
+    // -- 9. RAG Metrics (user-entered Red/Amber/Green) --
+    const ragSheet = workbook.Sheets['RAG Metrics'];
+    if (ragSheet) {
+      const rows = XLSX.utils.sheet_to_json(ragSheet, { header: 1, defval: '' });
+      data.ragMetrics = {};
+      for (let i = 1; i < rows.length; i++) {
+        const key = String(rows[i][0] || '').trim();
+        const value = String(rows[i][2] || 'red').trim().toLowerCase();
+        if (key) data.ragMetrics[key] = value;
+      }
+    }
+
     // -- Compute totals --
     if (data.monthlyBilling) {
       const achieved = data.monthlyBilling.filter(d => d.achievement !== null);

@@ -60,6 +60,7 @@ export function useKamData() {
       collectionTotals: apiData.collectionTotals || fb.collectionTotals,
       weightages: apiData.weightages || fb.defaultWeightages,
       pipelineCoverage: apiData.pipelineCoverage || fb.pipelineCoverage,
+      ragMetrics: apiData.ragMetrics || fb.defaultRagMetrics || {},
     };
   }, []);
 
@@ -81,6 +82,7 @@ export function useKamData() {
       collectionTotals: fb.collectionTotals,
       weightages: fb.defaultWeightages,
       pipelineCoverage: fb.pipelineCoverage,
+      ragMetrics: fb.defaultRagMetrics || {},
     };
   }, []);
 
@@ -280,5 +282,6 @@ export function useKamData() {
     collectionTotals: data?.collectionTotals || fb.collectionTotals,
     weightages: data?.weightages || fb.defaultWeightages,
     pipelineCoverage: data?.pipelineCoverage || fb.pipelineCoverage,
+    ragMetrics: data?.ragMetrics || fb.defaultRagMetrics || {},
   };
 }
