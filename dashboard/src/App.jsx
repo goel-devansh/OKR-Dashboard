@@ -1914,7 +1914,7 @@ function DashboardContent() {
     salesCapacity: { label: 'Sales Capacity', drill: 'salesCapacity' },
     capabilityAI: { label: 'Capability Development in AI', isRAG: true },
     accountStrategy: { label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy', isRAG: true },
-    archDomain: { label: 'Arch & Domain Knowledge', isRAG: true },
+    archDomain: { label: 'Architecture & Domain Knowledge', isRAG: true },
   };
   const metricTiles = Object.keys(weightages)
     .filter(key => metricTileConfig[key])
@@ -2426,7 +2426,7 @@ function DashboardContent() {
             {[
               { key: 'capabilityAI', label: 'Capability Development in AI' },
               { key: 'accountStrategy', label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy' },
-              { key: 'archDomain', label: 'Arch & Domain Knowledge' },
+              { key: 'archDomain', label: 'Architecture & Domain Knowledge' },
             ].filter(m => weightages[m.key]).map(m => {
               const val = ragMetrics?.[m.key] || 'red';
               const colors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
