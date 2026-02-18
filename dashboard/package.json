@@ -9,7 +9,8 @@
     "server": "node server.cjs",
     "generate-template": "node generate-template.cjs",
     "generate-data": "node generateStaticData.cjs",
-    "build": "node generateStaticData.cjs && vite build",
+    "clean": "node -e \"const fs=require('fs'),p=require('path'),d=p.resolve(__dirname,'..','assets');if(fs.existsSync(d)){fs.rmSync(d,{recursive:true});console.log('Cleaned assets/')}\"",
+    "build": "npm run clean && node generateStaticData.cjs && vite build",
     "lint": "eslint .",
     "preview": "vite preview"
   },
