@@ -44,7 +44,8 @@
       "Bash(git rm:*)",
       "Bash(xcopy:*)",
       "Bash(robocopy:*)",
-      "Bash(ollama list:*)"
+      "Bash(ollama list:*)",
+      "Bash(git status:*)"
     ]
   }
 }
