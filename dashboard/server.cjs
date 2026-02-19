@@ -307,10 +307,9 @@ app.post('/api/rag', (req, res) => {
   }
 });
 
-// ─── AI Chat Endpoint (Google Gemini + SSE Streaming) ────────
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-const GEMINI_MODEL = 'gemini-2.5-flash';
-const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+// ─── AI Chat Endpoint (Ollama + SSE Streaming) ───────────────
+const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
 
 // Build data section for a single function+FY dataset
 function buildDataSection(data) {
@@ -447,70 +446,67 @@ app.post('/api/chat', async (req, res) => {
 
   const systemPrompt = buildSystemPrompt(func, fyKey, cachedData);
 
-  // Build Gemini contents array with conversation history
-  const contents = [];
-  if (history && Array.isArray(history)) {
-    for (const msg of history.slice(-6)) { // Keep last 6 messages for context
-      contents.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
-      });
-    }
-  }
-  contents.push({
-    role: 'user',
-    parts: [{ text: message }],
-  });
-
   // Set SSE headers
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
+  // Build Ollama messages array (system + history + user message)
+  const ollamaMessages = [
+    { role: 'system', content: systemPrompt },
+  ];
+  if (history && Array.isArray(history)) {
+    for (const msg of history.slice(-6)) {
+      ollamaMessages.push({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content,
+      });
+    }
+  }
+  ollamaMessages.push({ role: 'user', content: message });
+
   try {
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000); // 60s timeout
+    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
 
-    const geminiRes = await fetch(GEMINI_URL, {
+    console.log(`Ollama: sending to ${OLLAMA_MODEL}...`);
+    const ollamaRes = await fetch(`${OLLAMA_BASE}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       signal: controller.signal,
       body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }],
-        },
-        contents,
-        generationConfig: {
+        model: OLLAMA_MODEL,
+        messages: ollamaMessages,
+        stream: true,
+        options: {
           temperature: 0.3,
-          maxOutputTokens: 1024,
+          num_predict: 1024,
         },
       }),
     });
 
     clearTimeout(timeout);
 
-    if (!geminiRes.ok) {
-      const errBody = await geminiRes.text();
-      console.error('Gemini API error:', geminiRes.status, errBody);
-      res.write(`data: ${JSON.stringify({ error: `Gemini error: ${geminiRes.status}` })}\n\n`);
+    if (!ollamaRes.ok) {
+      const errBody = await ollamaRes.text();
+      console.error('Ollama API error:', ollamaRes.status, errBody);
+      res.write(`data: ${JSON.stringify({ error: `Ollama error: ${ollamaRes.status}` })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
     }
 
-    // Parse Gemini SSE stream using Web ReadableStream API
-    const reader = geminiRes.body.getReader();
+    // Parse Ollama NDJSON stream using Web ReadableStream API
+    const reader = ollamaRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let aborted = false;
 
-    // Handle client disconnect
     req.on('close', () => {
       aborted = true;
       reader.cancel();
     });
 
-    // Read stream chunks
     const processStream = async () => {
       try {
         while (true) {
@@ -519,44 +515,39 @@ app.post('/api/chat', async (req, res) => {
 
           buffer += decoder.decode(value, { stream: true });
           const lines = buffer.split('\n');
-          buffer = lines.pop(); // Keep incomplete line in buffer
+          buffer = lines.pop();
 
           for (const line of lines) {
             const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-            const jsonStr = trimmed.slice(6); // Remove "data: " prefix
-            if (!jsonStr) continue;
+            if (!trimmed) continue;
 
             try {
-              const parsed = JSON.parse(jsonStr);
-              // Gemini response: { candidates: [{ content: { parts: [{ text: "..." }] } }] }
-              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              const parsed = JSON.parse(trimmed);
+              // Ollama streams: { message: { content: "..." }, done: false }
+              const text = parsed?.message?.content;
               if (text) {
                 res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
               }
+              if (parsed.done) break;
             } catch (e) {
               // skip malformed lines
             }
           }
         }
 
-        // Process any remaining buffer
+        // Process remaining buffer
         if (buffer.trim()) {
-          const trimmed = buffer.trim();
-          if (trimmed.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(trimmed.slice(6));
-              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
-              if (text) {
-                res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
-              }
-            } catch (e) {}
-          }
+          try {
+            const parsed = JSON.parse(buffer.trim());
+            const text = parsed?.message?.content;
+            if (text) {
+              res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+            }
+          } catch (e) {}
         }
       } catch (err) {
         if (!aborted) {
-          console.error('Gemini stream error:', err);
+          console.error('Ollama stream error:', err);
           if (!res.writableEnded) {
             res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
           }
@@ -573,7 +564,9 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (err) {
     console.error('Chat API error:', err);
-    const errorMsg = `Chat error: ${err.message}`;
+    const errorMsg = err.message.includes('ECONNREFUSED')
+      ? 'Ollama is not running. Start it with: ollama serve'
+      : `Chat error: ${err.message}`;
     res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
     res.write('data: [DONE]\n\n');
     res.end();

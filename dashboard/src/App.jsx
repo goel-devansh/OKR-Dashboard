@@ -3141,7 +3141,7 @@ function ChatBubble({ selectedFunction, selectedFY }) {
             borderTop: '1px solid rgba(255,255,255,0.03)',
             letterSpacing: '0.5px', fontWeight: 500,
           }}>
-            POWERED BY GEMINI 2.5 FLASH
+            POWERED BY QWEN 2.5
           </div>
         </div>
       )}
