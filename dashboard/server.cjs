@@ -307,9 +307,16 @@ app.post('/api/rag', (req, res) => {
   }
 });
 
-// ─── AI Chat Endpoint (Ollama + SSE Streaming) ───────────────
-const OLLAMA_BASE = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'qwen2.5:0.5b';
+// ─── AI Chat Endpoint (Google Gemini + SSE Streaming) ────────
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+// Primary model + fallback (for when primary is rate-limited)
+const GEMINI_MODELS = [
+  'gemini-2.5-flash',       // Best quality (10 RPM, 250 RPD free tier)
+  'gemini-2.0-flash-lite',  // Higher quota fallback (30 RPM, 1500 RPD free tier)
+];
+function geminiUrl(model) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+}
 
 // Build data section for a single function+FY dataset
 function buildDataSection(data) {
@@ -452,52 +459,79 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
-  // Build Ollama messages array (system + history + user message)
-  const ollamaMessages = [
-    { role: 'system', content: systemPrompt },
-  ];
+  // Build Gemini contents array with conversation history
+  const contents = [];
   if (history && Array.isArray(history)) {
     for (const msg of history.slice(-6)) {
-      ollamaMessages.push({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.content,
+      contents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }],
       });
     }
   }
-  ollamaMessages.push({ role: 'user', content: message });
+  contents.push({
+    role: 'user',
+    parts: [{ text: message }],
+  });
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 120000); // 2 min timeout
-
-    console.log(`Ollama: sending to ${OLLAMA_MODEL}...`);
-    const ollamaRes = await fetch(`${OLLAMA_BASE}/api/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: OLLAMA_MODEL,
-        messages: ollamaMessages,
-        stream: true,
-        options: {
-          temperature: 0.3,
-          num_predict: 1024,
-        },
-      }),
+    const reqBody = JSON.stringify({
+      system_instruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents,
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      },
     });
 
-    clearTimeout(timeout);
+    // Try models in order: primary first, then fallback on 429
+    let geminiRes = null;
+    let usedModel = GEMINI_MODELS[0];
 
-    if (!ollamaRes.ok) {
-      const errBody = await ollamaRes.text();
-      console.error('Ollama API error:', ollamaRes.status, errBody);
-      res.write(`data: ${JSON.stringify({ error: `Ollama error: ${ollamaRes.status}` })}\n\n`);
+    for (const model of GEMINI_MODELS) {
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+
+      const attempt = await fetch(geminiUrl(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: reqBody,
+      });
+
+      clearTimeout(timeout);
+
+      if (attempt.ok) {
+        geminiRes = attempt;
+        usedModel = model;
+        console.log(`Gemini: using ${model}`);
+        break;
+      }
+
+      if (attempt.status === 429) {
+        const errBody = await attempt.text();
+        console.warn(`Gemini 429 on ${model}, trying fallback...`);
+        continue;
+      }
+
+      const errBody = await attempt.text();
+      console.error('Gemini API error:', attempt.status, errBody);
+      res.write(`data: ${JSON.stringify({ error: `Gemini error: ${attempt.status}` })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
     }
 
-    // Parse Ollama NDJSON stream using Web ReadableStream API
-    const reader = ollamaRes.body.getReader();
+    if (!geminiRes) {
+      console.error('All Gemini models rate-limited (429)');
+      res.write(`data: ${JSON.stringify({ error: 'AI models are rate-limited. Please wait a minute and try again.' })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      return res.end();
+    }
+
+    // Parse Gemini SSE stream using Web ReadableStream API
+    const reader = geminiRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let aborted = false;
@@ -519,16 +553,17 @@ app.post('/api/chat', async (req, res) => {
 
           for (const line of lines) {
             const trimmed = line.trim();
-            if (!trimmed) continue;
+            if (!trimmed || !trimmed.startsWith('data: ')) continue;
+
+            const jsonStr = trimmed.slice(6);
+            if (!jsonStr) continue;
 
             try {
-              const parsed = JSON.parse(trimmed);
-              // Ollama streams: { message: { content: "..." }, done: false }
-              const text = parsed?.message?.content;
+              const parsed = JSON.parse(jsonStr);
+              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
               if (text) {
                 res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
               }
-              if (parsed.done) break;
             } catch (e) {
               // skip malformed lines
             }
@@ -537,17 +572,20 @@ app.post('/api/chat', async (req, res) => {
 
         // Process remaining buffer
         if (buffer.trim()) {
-          try {
-            const parsed = JSON.parse(buffer.trim());
-            const text = parsed?.message?.content;
-            if (text) {
-              res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
-            }
-          } catch (e) {}
+          const trimmed = buffer.trim();
+          if (trimmed.startsWith('data: ')) {
+            try {
+              const parsed = JSON.parse(trimmed.slice(6));
+              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              if (text) {
+                res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+              }
+            } catch (e) {}
+          }
         }
       } catch (err) {
         if (!aborted) {
-          console.error('Ollama stream error:', err);
+          console.error('Gemini stream error:', err);
           if (!res.writableEnded) {
             res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
           }
@@ -564,10 +602,7 @@ app.post('/api/chat', async (req, res) => {
 
   } catch (err) {
     console.error('Chat API error:', err);
-    const errorMsg = err.message.includes('ECONNREFUSED')
-      ? 'Ollama is not running. Start it with: ollama serve'
-      : `Chat error: ${err.message}`;
-    res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+    res.write(`data: ${JSON.stringify({ error: `Chat error: ${err.message}` })}\n\n`);
     res.write('data: [DONE]\n\n');
     res.end();
   }
