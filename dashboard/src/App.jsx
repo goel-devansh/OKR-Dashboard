@@ -1930,7 +1930,7 @@ function DashboardContent() {
     const raw = {};
     if (weightages.arr) raw.arr = safeDiv(annualMetrics?.arr?.achievementTillDate || 0, annualMetrics?.arr?.targetFY26 || 1);
     if (weightages.serviceRev) raw.serviceRev = safeDiv(annualMetrics?.serviceRev?.achievementTillDate || 0, annualMetrics?.serviceRev?.targetFY26 || 1);
-    if (weightages.pipelineCoverage) raw.pipelineCoverage = pcCoverage;
+    if (weightages.pipelineCoverage) raw.pipelineCoverage = pcCoverage / 3; // achievement vs 3x benchmark
     if (weightages.ndr) raw.ndr = safeDiv(annualMetrics?.ndr?.achievementTillDate || 0, annualMetrics?.ndr?.targetFY26 || 1);
     if (weightages.gdr) raw.gdr = safeDiv(annualMetrics?.gdr?.achievementTillDate || 0, annualMetrics?.gdr?.targetFY26 || 1);
     // NPS: improvement-based calculation when baseline exists
