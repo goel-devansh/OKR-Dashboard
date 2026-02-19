@@ -731,11 +731,17 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
       }}>
         <div style={{ position: 'absolute', top: 14, right: 14, display: 'flex', gap: 8 }}>
           <button onClick={handleScorecardPDF} disabled={scorecardExporting} style={{
-            height: 34, paddingInline: 12, borderRadius: 8,
-            border: '1px solid rgba(232,31,118,0.4)', background: scorecardExporting ? '#f1f5f9' : 'rgba(232,31,118,0.08)',
+            height: 34, paddingInline: 14, borderRadius: 8,
+            border: '1px solid rgba(232,31,118,0.3)', background: scorecardExporting ? '#f1f5f9' : 'rgba(232,31,118,0.06)',
             fontSize: 12, fontWeight: 600, cursor: scorecardExporting ? 'default' : 'pointer',
-            display: 'flex', alignItems: 'center', gap: 5, color: '#E81F76', transition: 'all 0.2s',
-          }}>{scorecardExporting ? '⏳ Exporting…' : '⬇ Download PDF'}</button>
+            display: 'flex', alignItems: 'center', gap: 6, color: '#E81F76', transition: 'all 0.2s',
+          }}
+            onMouseEnter={e => { if (!scorecardExporting) e.currentTarget.style.background = 'rgba(232,31,118,0.15)'; }}
+            onMouseLeave={e => { e.currentTarget.style.background = scorecardExporting ? '#f1f5f9' : 'rgba(232,31,118,0.06)'; }}
+          >{scorecardExporting
+            ? <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{animation:'spin 1s linear infinite'}}><path d="M12 2v4m0 12v4m-7.07-3.93l2.83-2.83m8.48-8.48l2.83-2.83M2 12h4m12 0h4m-3.93 7.07l-2.83-2.83M7.76 7.76L4.93 4.93"/></svg><span>Exporting…</span></>
+            : <><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg><span>Download PDF</span></>
+          }</button>
           <button onClick={onClose} style={{
             width: 34, height: 34, borderRadius: 8,
             border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
