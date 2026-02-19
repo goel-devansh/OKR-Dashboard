@@ -330,10 +330,10 @@ const MetricTile = ({ label, achievement, weight, onClick, isCoverage, isRAG, ra
     );
   }
 
-  // Pipeline coverage: displayed as Nx ratio, not percentage
+  // Pipeline coverage: achievement is coverage/3 (fraction of 3x benchmark), display as %
   if (isCoverage) {
-    const covColor = achievement >= 3 ? '#10b981' : achievement >= 1 ? '#f59e0b' : '#ef4444';
-    const barPct = Math.min(achievement / 5 * 100, 100); // 5x = full bar
+    const pctVal = Math.min(Math.max(achievement, 0) * 100, 100);
+    const covColor = achievement >= 1 ? '#10b981' : achievement >= 0.33 ? '#f59e0b' : '#ef4444';
     return (
       <div onClick={onClick} style={{
         display: 'flex', alignItems: 'center', gap: 8, padding: '5px 10px', borderRadius: 8,
@@ -346,10 +346,10 @@ const MetricTile = ({ label, achievement, weight, onClick, isCoverage, isRAG, ra
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 2 }}>
             <span style={{ fontSize: 10.5, fontWeight: 600, color: '#cbd5e1', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
-            <span style={{ fontSize: 10.5, fontWeight: 800, color: covColor, marginLeft: 6, whiteSpace: 'nowrap' }}>{achievement.toFixed(1)}x</span>
+            <span style={{ fontSize: 10.5, fontWeight: 800, color: covColor, marginLeft: 6, whiteSpace: 'nowrap' }}>{pctVal.toFixed(0)}%</span>
           </div>
           <div style={{ height: 3, background: '#2a2a4a', borderRadius: 2, overflow: 'hidden' }}>
-            <div style={{ height: '100%', width: `${barPct}%`, background: covColor, borderRadius: 2, transition: 'width 0.8s ease-out' }} />
+            <div style={{ height: '100%', width: `${pctVal}%`, background: covColor, borderRadius: 2, transition: 'width 0.8s ease-out' }} />
           </div>
           <div style={{ fontSize: 8.5, color: '#64748b', marginTop: 1 }}>Wt: {weight}%</div>
         </div>
@@ -763,9 +763,9 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
                 const weight = weightages[r.key]?.weight || 0;
                 // Pipeline coverage: displayed as Nx ratio, not a 0-1 fraction
                 if (r.isCoverage) {
-                  const covVal = r.pct || 0;
-                  const covColor = covVal >= 3 ? '#10b981' : covVal >= 1 ? '#f59e0b' : '#ef4444';
-                  const weightedScore = Math.min(covVal, 1.0) * weight; // capped at 1x for scoring
+                  const covPct = r.pct || 0; // already coverage/3 (fraction of 3x benchmark)
+                  const covColor = covPct >= 1 ? '#10b981' : covPct >= 0.33 ? '#f59e0b' : '#ef4444';
+                  const weightedScore = Math.min(covPct, 1.0) * weight;
                   return (
                     <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
                       <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
@@ -776,7 +776,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
                         <span style={{
                           display: 'inline-block', padding: '2px 10px', borderRadius: 12,
                           background: `${covColor}18`, color: covColor, fontWeight: 700, fontSize: 12,
-                        }}>{covVal.toFixed(1)}x</span>
+                        }}>{(covPct * 100).toFixed(0)}%</span>
                       </td>
                       <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
                     </tr>
