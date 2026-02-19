@@ -307,10 +307,26 @@ app.post('/api/rag', (req, res) => {
   }
 });
 
-// ─── AI Chat Endpoint (Cerebras + SSE Streaming) ─────────────
-const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY || '';
-const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'llama-3.3-70b';
-const CEREBRAS_URL = 'https://api.cerebras.ai/v1/chat/completions';
+// ─── AI Chat Endpoint (Multi-Provider: Groq → Gemini) ────────
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
+const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
+
+// Groq: OpenAI-compatible, Llama 3.3 70B with 131K context, 30 RPM free tier
+const GROQ_MODELS = [
+  'llama-3.3-70b-versatile',   // Primary: 131K context, great at data grounding
+  'llama-3.1-8b-instant',      // Fallback: faster, smaller
+];
+const GROQ_API_URL = 'https://api.groq.com/openai/v1/chat/completions';
+
+// Gemini: Fallback provider
+const GEMINI_MODELS = [
+  'gemini-2.0-flash',
+  'gemini-2.5-flash',
+  'gemini-2.0-flash-lite',
+];
+function geminiUrl(model) {
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
+}
 
 // Build data section for a single function+FY dataset
 function buildDataSection(data) {
@@ -326,29 +342,28 @@ function buildDataSection(data) {
     }
   }
 
-  // Billing
-  if (data.monthlyBilling && data.billingTotals) {
-    lines.push(`\n### Monthly Billing (Target vs Achievement in Cr):`);
-    for (const m of data.monthlyBilling) {
-      if (m.achievement !== null && m.achievement !== undefined) {
-        lines.push(`- ${m.month}: Target=${m.target}, Achievement=${m.achievement} (${(m.percentage * 100).toFixed(1)}%)`);
+  // Billing totals
+  if (data.billingTotals) {
+    const bt = data.billingTotals;
+    lines.push(`\n### Billing: Target=₹${bt.totalTarget.toFixed(1)} Cr, Achievement=₹${bt.totalAchievement.toFixed(1)} Cr (${(bt.achievementPercentage * 100).toFixed(1)}%)`);
+    // Top/bottom months
+    if (data.monthlyBilling) {
+      const withData = data.monthlyBilling.filter(m => m.achievement !== null && m.achievement !== undefined);
+      if (withData.length > 0) {
+        const best = withData.reduce((a, b) => (b.percentage || 0) > (a.percentage || 0) ? b : a);
+        const worst = withData.reduce((a, b) => (b.percentage || 0) < (a.percentage || 0) ? b : a);
+        lines.push(`- Best month: ${best.month} (${(best.percentage * 100).toFixed(0)}%), Worst: ${worst.month} (${(worst.percentage * 100).toFixed(0)}%)`);
       }
     }
-    lines.push(`- TOTAL: Target=${data.billingTotals.totalTarget}, Achievement=${data.billingTotals.totalAchievement} (${(data.billingTotals.achievementPercentage * 100).toFixed(1)}%)`);
   }
 
-  // Collection
-  if (data.monthlyCollection && data.collectionTotals) {
-    lines.push(`\n### Monthly Collection (Target vs Achievement in Cr):`);
-    for (const m of data.monthlyCollection) {
-      if (m.achievement !== null && m.achievement !== undefined) {
-        lines.push(`- ${m.month}: Target=${m.target}, Achievement=${m.achievement} (${(m.percentage * 100).toFixed(1)}%)`);
-      }
-    }
-    lines.push(`- TOTAL: Target=${data.collectionTotals.totalTarget}, Achievement=${data.collectionTotals.totalAchievement} (${(data.collectionTotals.achievementPercentage * 100).toFixed(1)}%)`);
+  // Collection totals
+  if (data.collectionTotals) {
+    const ct = data.collectionTotals;
+    lines.push(`\n### Collection: Target=₹${ct.totalTarget.toFixed(1)} Cr, Achievement=₹${ct.totalAchievement.toFixed(1)} Cr (${(ct.achievementPercentage * 100).toFixed(1)}%)`);
   }
 
-  // Quarterly metrics
+  // Quarterly metrics (compact: just totals per quarter)
   const qMetrics = [
     ['QBRs', data.quarterlyQBRs],
     ['New Logos', data.quarterlyNewLogos],
@@ -358,19 +373,30 @@ function buildDataSection(data) {
   ];
   for (const [name, arr] of qMetrics) {
     if (arr && arr.length > 0) {
-      lines.push(`\n### Quarterly ${name}:`);
-      for (const q of arr) {
-        lines.push(`- ${q.quarter}: Target=${q.target}, Achievement=${q.achievement} (${(q.percentage * 100).toFixed(1)}%)`);
-      }
+      const totalTarget = arr.reduce((s, q) => s + (q.target || 0), 0);
+      const totalAch = arr.reduce((s, q) => s + (q.achievement || 0), 0);
+      const pct = totalTarget ? ((totalAch / totalTarget) * 100).toFixed(1) : 'N/A';
+      lines.push(`- ${name}: Target=${totalTarget}, Achievement=${totalAch.toFixed(2)} (${pct}%)`);
     }
   }
 
   // Account Owner Performance
   if (data.accountOwnerPerformance && data.accountOwnerPerformance.length > 0) {
-    lines.push(`\n### Account Owner Performance:`);
+    lines.push(`\n### Account Owner Performance (Individual Team Members):`);
+    lines.push(`Each person below is an account owner. Their metrics are:`);
+    lines.push(`- ARR Achievement = incremental ARR in Cr (can be negative if accounts churned)`);
+    lines.push(`- Billing = total billing amount in Cr (higher is better)`);
+    lines.push(`- Collection = total collection amount in Cr (higher is better)`);
     for (const o of data.accountOwnerPerformance) {
-      lines.push(`- ${o.name}: ARR Achievement=${o.arrAchievement}, Billing=${o.billing} Cr, Collection=${o.collection} Cr`);
+      lines.push(`- ${o.name}: ARR Achievement=₹${o.arrAchievement} Cr, Billing=₹${o.billing} Cr, Collection=₹${o.collection} Cr`);
     }
+    // Add explicit rankings for common queries
+    const sortedByBilling = [...data.accountOwnerPerformance].sort((a, b) => b.billing - a.billing);
+    lines.push(`\nBilling Ranking (highest to lowest): ${sortedByBilling.map((o, i) => `${i + 1}. ${o.name} (₹${o.billing} Cr)`).join(', ')}`);
+    const sortedByCollection = [...data.accountOwnerPerformance].sort((a, b) => b.collection - a.collection);
+    lines.push(`Collection Ranking (highest to lowest): ${sortedByCollection.map((o, i) => `${i + 1}. ${o.name} (₹${o.collection} Cr)`).join(', ')}`);
+    const sortedByARR = [...data.accountOwnerPerformance].sort((a, b) => b.arrAchievement - a.arrAchievement);
+    lines.push(`ARR Achievement Ranking (highest to lowest): ${sortedByARR.map((o, i) => `${i + 1}. ${o.name} (₹${o.arrAchievement} Cr)`).join(', ')}`);
   }
 
   // Pipeline Coverage
@@ -401,6 +427,48 @@ function buildDataSection(data) {
   return lines.join('\n');
 }
 
+// Build data string for injecting as user message context
+function buildDataForMessages(currentFunc, currentFY, allData) {
+  const funcs = Object.keys(allData);
+  const lines = [];
+  for (const funcName of funcs) {
+    const fyData = allData[funcName];
+    if (!fyData) continue;
+    const fyKeys = Object.keys(fyData).sort();
+    for (const fyKey of fyKeys) {
+      const data = fyData[fyKey];
+      if (!data) continue;
+      const isCurrent = (funcName === currentFunc && fyKey === currentFY);
+      lines.push(`\n## ${funcName} — ${fyKey}${isCurrent ? ' (CURRENTLY VIEWING)' : ''}`);
+      lines.push(buildDataSection(data));
+    }
+  }
+  return lines.join('\n');
+}
+
+// Compact summary for non-current functions (saves context tokens)
+function buildCompactSummary(data) {
+  if (!data) return '';
+  const lines = [];
+  if (data.annualMetrics) {
+    lines.push(`Annual KPIs:`);
+    for (const [key, m] of Object.entries(data.annualMetrics)) {
+      lines.push(`- ${m.label}: Target=${m.targetFY26}${m.unit || ''}, Achievement=${m.achievementTillDate}${m.unit || ''}`);
+    }
+  }
+  if (data.billingTotals) {
+    lines.push(`Billing Total: Target=₹${data.billingTotals.totalTarget.toFixed(1)} Cr, Achievement=₹${data.billingTotals.totalAchievement.toFixed(1)} Cr (${(data.billingTotals.achievementPercentage * 100).toFixed(1)}%)`);
+  }
+  if (data.collectionTotals) {
+    lines.push(`Collection Total: Target=₹${data.collectionTotals.totalTarget.toFixed(1)} Cr, Achievement=₹${data.collectionTotals.totalAchievement.toFixed(1)} Cr (${(data.collectionTotals.achievementPercentage * 100).toFixed(1)}%)`);
+  }
+  if (data.accountOwnerPerformance && data.accountOwnerPerformance.length > 0) {
+    const sortedByBilling = [...data.accountOwnerPerformance].sort((a, b) => b.billing - a.billing);
+    lines.push(`Top Billers: ${sortedByBilling.slice(0, 3).map(o => `${o.name} (₹${o.billing} Cr)`).join(', ')}`);
+  }
+  return lines.join('\n');
+}
+
 function buildSystemPrompt(currentFunc, currentFY, allData) {
   const funcs = Object.keys(allData);
   if (funcs.length === 0) return `You are an AI assistant for the OKR Dashboard. No data is currently loaded.`;
@@ -411,12 +479,15 @@ function buildSystemPrompt(currentFunc, currentFY, allData) {
   lines.push(`You have access to ALL business functions and fiscal years loaded in the system.`);
   lines.push(`You can answer questions about any function (${funcs.join(', ')}) and any FY.`);
   lines.push(`You can also compare metrics across functions and fiscal years.`);
-  lines.push(`Be concise, use bullet points, and reference specific numbers from the data below.`);
-  lines.push(`If the data doesn't contain the answer, say so clearly.`);
-  lines.push(`Use ₹ for currency values. Values are in Crores (Cr) unless stated otherwise.`);
-  lines.push(`When the user asks a question without specifying a function or FY, assume they mean ${currentFunc} ${currentFY}.`);
+  lines.push(`IMPORTANT RULES:`);
+  lines.push(`- ONLY use the data provided below. NEVER make up or guess numbers.`);
+  lines.push(`- When asked "who has highest X", look at the rankings provided and give the correct answer.`);
+  lines.push(`- Be concise, use bullet points, and reference specific numbers from the data.`);
+  lines.push(`- If the data doesn't contain the answer, say "This data is not available in the dashboard."`);
+  lines.push(`- Use ₹ for currency values. Values are in Crores (Cr) unless stated otherwise.`);
+  lines.push(`- When the user asks without specifying a function or FY, assume ${currentFunc} ${currentFY}.`);
 
-  // Include data for ALL functions and FYs
+  // Include FULL data for ALL functions and FYs
   for (const funcName of funcs) {
     const fyData = allData[funcName];
     if (!fyData) continue;
@@ -435,6 +506,236 @@ function buildSystemPrompt(currentFunc, currentFY, allData) {
   return lines.join('\n');
 }
 
+// ─── Groq streaming helper (OpenAI-compatible SSE) ──────────
+async function tryGroq(systemPrompt, messages, res, req) {
+  if (!GROQ_API_KEY) return false;
+
+  for (const model of GROQ_MODELS) {
+    try {
+      const bodyObj = {
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          ...messages,
+        ],
+        temperature: 0.3,
+        max_tokens: 1024,
+        stream: true,
+      };
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+
+      const attempt = await fetch(GROQ_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_API_KEY}`,
+        },
+        signal: controller.signal,
+        body: JSON.stringify(bodyObj),
+      });
+
+      clearTimeout(timeout);
+
+      if (attempt.ok) {
+        console.log(`Groq: using ${model}`);
+        await streamOpenAI(attempt, res, req, 'Groq');
+        return true;
+      }
+
+      if (attempt.status === 429) {
+        console.warn(`Groq 429 on ${model}, trying next...`);
+        await attempt.text();
+        continue;
+      }
+
+      const errBody = await attempt.text();
+      console.error(`Groq error (${model}):`, attempt.status, errBody);
+      // Try next Groq model
+      continue;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.warn(`Groq timeout on ${model}`);
+        continue;
+      }
+      console.error(`Groq exception (${model}):`, err.message);
+      continue;
+    }
+  }
+  return false; // All Groq models failed
+}
+
+// ─── Gemini streaming helper ────────────────────────────────
+async function tryGemini(systemPrompt, geminiContents, res, req) {
+  if (!GEMINI_API_KEY) return false;
+
+  for (const model of GEMINI_MODELS) {
+    try {
+      const bodyObj = {
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: geminiContents,
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+        },
+      };
+      if (model.includes('2.5')) {
+        bodyObj.generationConfig.thinkingConfig = { thinkingBudget: 0 };
+      }
+
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 60000);
+
+      const attempt = await fetch(geminiUrl(model), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify(bodyObj),
+      });
+
+      clearTimeout(timeout);
+
+      if (attempt.ok) {
+        console.log(`Gemini: using ${model}`);
+        await streamGemini(attempt, res, req);
+        return true;
+      }
+
+      if (attempt.status === 429) {
+        console.warn(`Gemini 429 on ${model}, trying next...`);
+        await attempt.text();
+        continue;
+      }
+
+      const errBody = await attempt.text();
+      console.error(`Gemini error (${model}):`, attempt.status, errBody);
+      continue;
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.warn(`Gemini timeout on ${model}`);
+        continue;
+      }
+      console.error(`Gemini exception (${model}):`, err.message);
+      continue;
+    }
+  }
+  return false;
+}
+
+// ─── Stream parsers ─────────────────────────────────────────
+async function streamOpenAI(response, res, req, providerName) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let aborted = false;
+
+  req.on('close', () => { aborted = true; reader.cancel(); });
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done || aborted) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6);
+        if (jsonStr === '[DONE]') continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.choices?.[0]?.delta?.content;
+          if (text) {
+            res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+          }
+        } catch (e) {}
+      }
+    }
+
+    // Process remaining buffer
+    if (buffer.trim()) {
+      const trimmed = buffer.trim();
+      if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
+        try {
+          const parsed = JSON.parse(trimmed.slice(6));
+          const text = parsed?.choices?.[0]?.delta?.content;
+          if (text) res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+        } catch (e) {}
+      }
+    }
+  } catch (err) {
+    if (!aborted) {
+      console.error(`${providerName} stream error:`, err);
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+    }
+  } finally {
+    if (!res.writableEnded) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+}
+
+async function streamGemini(response, res, req) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = '';
+  let aborted = false;
+
+  req.on('close', () => { aborted = true; reader.cancel(); });
+
+  try {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done || aborted) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || !trimmed.startsWith('data: ')) continue;
+        const jsonStr = trimmed.slice(6);
+        if (!jsonStr) continue;
+        try {
+          const parsed = JSON.parse(jsonStr);
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) {
+            res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+          }
+        } catch (e) {}
+      }
+    }
+
+    if (buffer.trim()) {
+      const trimmed = buffer.trim();
+      if (trimmed.startsWith('data: ')) {
+        try {
+          const parsed = JSON.parse(trimmed.slice(6));
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (text) res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
+        } catch (e) {}
+      }
+    }
+  } catch (err) {
+    if (!aborted) {
+      console.error('Gemini stream error:', err);
+      if (!res.writableEnded) res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
+    }
+  } finally {
+    if (!res.writableEnded) {
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
+  }
+}
+
+// ─── Chat Endpoint (Groq primary → Gemini fallback) ─────────
 app.post('/api/chat', async (req, res) => {
   const { message, function: funcName, fy, history } = req.body || {};
 
@@ -453,128 +754,49 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
-  // Build OpenAI-compatible messages array
-  const messages = [
-    { role: 'system', content: systemPrompt },
-  ];
+  // Build OpenAI-format messages (for Groq)
+  const openAIMessages = [];
   if (history && Array.isArray(history)) {
     for (const msg of history.slice(-6)) {
-      messages.push({
+      openAIMessages.push({
         role: msg.role === 'user' ? 'user' : 'assistant',
         content: msg.content,
       });
     }
   }
-  messages.push({ role: 'user', content: message });
+  openAIMessages.push({ role: 'user', content: message });
+
+  // Build Gemini-format contents
+  const geminiContents = [];
+  if (history && Array.isArray(history)) {
+    for (const msg of history.slice(-6)) {
+      geminiContents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: [{ text: msg.content }],
+      });
+    }
+  }
+  geminiContents.push({ role: 'user', parts: [{ text: message }] });
 
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 60000);
+    // Provider priority: Groq → Gemini
+    const groqOk = await tryGroq(systemPrompt, openAIMessages, res, req);
+    if (groqOk) return;
 
-    console.log(`Cerebras: sending to ${CEREBRAS_MODEL}...`);
-    const cerebrasRes = await fetch(CEREBRAS_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
-      },
-      signal: controller.signal,
-      body: JSON.stringify({
-        model: CEREBRAS_MODEL,
-        messages,
-        stream: true,
-        temperature: 0.3,
-        max_completion_tokens: 1024,
-      }),
-    });
+    const geminiOk = await tryGemini(systemPrompt, geminiContents, res, req);
+    if (geminiOk) return;
 
-    clearTimeout(timeout);
-
-    if (!cerebrasRes.ok) {
-      const errBody = await cerebrasRes.text();
-      console.error('Cerebras API error:', cerebrasRes.status, errBody);
-      res.write(`data: ${JSON.stringify({ error: `Cerebras error: ${cerebrasRes.status}` })}\n\n`);
-      res.write('data: [DONE]\n\n');
-      return res.end();
-    }
-
-    // Parse OpenAI-compatible SSE stream
-    const reader = cerebrasRes.body.getReader();
-    const decoder = new TextDecoder();
-    let buffer = '';
-    let aborted = false;
-
-    req.on('close', () => {
-      aborted = true;
-      reader.cancel();
-    });
-
-    const processStream = async () => {
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done || aborted) break;
-
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split('\n');
-          buffer = lines.pop();
-
-          for (const line of lines) {
-            const trimmed = line.trim();
-            if (!trimmed || !trimmed.startsWith('data: ')) continue;
-
-            const jsonStr = trimmed.slice(6);
-            if (jsonStr === '[DONE]') break;
-            if (!jsonStr) continue;
-
-            try {
-              const parsed = JSON.parse(jsonStr);
-              // OpenAI format: { choices: [{ delta: { content: "..." } }] }
-              const text = parsed?.choices?.[0]?.delta?.content;
-              if (text) {
-                res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
-              }
-            } catch (e) {
-              // skip malformed lines
-            }
-          }
-        }
-
-        // Process remaining buffer
-        if (buffer.trim()) {
-          const trimmed = buffer.trim();
-          if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
-            try {
-              const parsed = JSON.parse(trimmed.slice(6));
-              const text = parsed?.choices?.[0]?.delta?.content;
-              if (text) {
-                res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
-              }
-            } catch (e) {}
-          }
-        }
-      } catch (err) {
-        if (!aborted) {
-          console.error('Cerebras stream error:', err);
-          if (!res.writableEnded) {
-            res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
-          }
-        }
-      } finally {
-        if (!res.writableEnded) {
-          res.write('data: [DONE]\n\n');
-          res.end();
-        }
-      }
-    };
-
-    processStream();
-
-  } catch (err) {
-    console.error('Chat API error:', err);
-    res.write(`data: ${JSON.stringify({ error: `Chat error: ${err.message}` })}\n\n`);
+    // All providers exhausted
+    res.write(`data: ${JSON.stringify({ error: 'All AI models are currently unavailable. Please try again in a minute.' })}\n\n`);
     res.write('data: [DONE]\n\n');
     res.end();
+  } catch (err) {
+    console.error('Chat API error:', err);
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify({ error: `Chat error: ${err.message}` })}\n\n`);
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
   }
 });
 
