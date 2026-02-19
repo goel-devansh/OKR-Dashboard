@@ -697,17 +697,63 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
       const html2canvas = (await import('html2canvas')).default;
       const { jsPDF } = await import('jspdf');
       const el = scorecardRef.current;
+
+      // Temporarily expand modal so html2canvas captures ALL content (not just visible viewport)
+      const prevMaxH = el.style.maxHeight;
+      const prevOverflow = el.style.overflowY;
+      el.style.maxHeight = 'none';
+      el.style.overflowY = 'visible';
+
       const canvas = await html2canvas(el, {
         scale: 2, useCORS: true, backgroundColor: '#ffffff', logging: false,
+        scrollY: 0, windowHeight: el.scrollHeight,
       });
+
+      // Restore modal styles
+      el.style.maxHeight = prevMaxH;
+      el.style.overflowY = prevOverflow;
+
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
       const pageW = pdf.internal.pageSize.getWidth();
       const pageH = pdf.internal.pageSize.getHeight();
-      const ratio = Math.min(pageW / canvas.width, pageH / canvas.height);
-      const w = canvas.width * ratio;
-      const h = canvas.height * ratio;
-      pdf.addImage(imgData, 'PNG', (pageW - w) / 2, (pageH - h) / 2, w, h);
+      const margin = 8; // mm margin on each side
+      const usableW = pageW - margin * 2;
+      const usableH = pageH - margin * 2;
+
+      // Scale image width to fit page width, then paginate vertically
+      const imgW = usableW;
+      const imgH = (canvas.height / canvas.width) * imgW;
+
+      if (imgH <= usableH) {
+        // Fits on one page — center vertically
+        pdf.addImage(imgData, 'PNG', margin, margin + (usableH - imgH) / 2, imgW, imgH);
+      } else {
+        // Multi-page: slice the canvas into page-sized vertical strips
+        const pageCanvasH = (usableH / imgH) * canvas.height; // px height per page
+        let yPos = 0;
+        let pageNum = 0;
+
+        while (yPos < canvas.height) {
+          if (pageNum > 0) pdf.addPage();
+
+          // Create a slice of the canvas for this page
+          const sliceH = Math.min(pageCanvasH, canvas.height - yPos);
+          const pageCanvas = document.createElement('canvas');
+          pageCanvas.width = canvas.width;
+          pageCanvas.height = sliceH;
+          const ctx = pageCanvas.getContext('2d');
+          ctx.drawImage(canvas, 0, yPos, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
+
+          const sliceData = pageCanvas.toDataURL('image/png');
+          const sliceImgH = (sliceH / canvas.width) * imgW;
+          pdf.addImage(sliceData, 'PNG', margin, margin, imgW, sliceImgH);
+
+          yPos += sliceH;
+          pageNum++;
+        }
+      }
+
       pdf.save(`${selectedFunction || 'KAM'}_Balanced_Scorecard_${selectedFY || 'FY'}.pdf`);
     } catch (err) {
       console.error('Scorecard PDF export failed:', err);
