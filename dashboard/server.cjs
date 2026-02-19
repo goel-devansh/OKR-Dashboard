@@ -4,6 +4,7 @@
 // Supports: {Function}_Dashboard_FY*.xlsx (e.g. KAM_Dashboard_FY26.xlsx, Sales_Dashboard_FY27.xlsx)
 // Run: node server.cjs
 // ============================================================
+require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const XLSX = require('xlsx');
@@ -307,7 +308,7 @@ app.post('/api/rag', (req, res) => {
 });
 
 // ─── AI Chat Endpoint (Google Gemini + SSE Streaming) ────────
-const GEMINI_API_KEY = 'AIzaSyA9iMaCfd8rXDI3xloPsn_reC6DoSkvDQk';
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
 const GEMINI_MODEL = 'gemini-2.5-flash';
 const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
 

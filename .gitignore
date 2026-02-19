@@ -6,6 +6,10 @@ kam-dashboard/node_modules/
 kam-dashboard/dist/
 *.local
 
+# Environment secrets (API keys)
+.env
+dashboard/.env
+
 # Logs
 *.log
 npm-debug.log*
