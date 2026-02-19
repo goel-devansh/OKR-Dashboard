@@ -2381,10 +2381,14 @@ function DashboardContent() {
             achievement={metricAchievements.nps} color={npsPct >= 50 ? '#10b981' : npsPct >= 25 ? '#f59e0b' : '#ef4444'}
             onClick={() => openDrill('nps')}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 5 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 4 }}>
               <span style={{ fontSize: 28, fontWeight: 900, color: npsM.achievementTillDate >= 0 ? '#10b981' : '#E81F76' }}>
                 {npsM.achievementTillDate}
               </span>
+              <div style={{ display: 'flex', justifyContent: 'space-between', width: '85%', fontSize: 9, marginBottom: -1 }}>
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>Q1: {npsBaseline}</span>
+                <span style={{ color: '#10b981', fontWeight: 700 }}>Target: +{npsM.targetFY26}</span>
+              </div>
               <div style={{ width: '85%', height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 3, transition: 'width 0.8s ease-out',
