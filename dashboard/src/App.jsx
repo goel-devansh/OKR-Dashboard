@@ -2376,31 +2376,24 @@ function DashboardContent() {
             const npsTotal = npsM.targetFY26 - npsBaseline;
             const npsPct = npsTotal !== 0 ? Math.max(0, (npsImprovement / npsTotal) * 100) : 0;
             return (
-          <MetricSummaryCard title="NPS Improvement" value={`${npsImprovement > 0 ? '+' : ''}${npsImprovement} pts`}
-            target={`${npsTotal} pts needed`} unit=""
+          <MetricSummaryCard title="NPS Score" value={npsM.achievementTillDate}
+            target={`+${npsM.targetFY26}`} unit=""
             achievement={metricAchievements.nps} color={npsPct >= 50 ? '#10b981' : npsPct >= 25 ? '#f59e0b' : '#ef4444'}
             onClick={() => openDrill('nps')}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 6 }}>
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                <span style={{ fontSize: 26, fontWeight: 900, color: '#E81F76' }}>
-                  {npsM.achievementTillDate}
-                </span>
-                <span style={{ fontSize: 11, color: '#94a3b8' }}>current</span>
-              </div>
-              <div style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ color: '#ef4444', fontWeight: 700 }}>{npsBaseline}</span>
-                <span>{'\u2192'}</span>
-                <span style={{ color: '#E81F76', fontWeight: 700 }}>{npsM.achievementTillDate}</span>
-                <span>{'\u2192'}</span>
-                <span style={{ color: '#10b981', fontWeight: 700 }}>+{npsM.targetFY26}</span>
-              </div>
-              <div style={{ width: '80%', height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 5 }}>
+              <span style={{ fontSize: 28, fontWeight: 900, color: npsM.achievementTillDate >= 0 ? '#10b981' : '#E81F76' }}>
+                {npsM.achievementTillDate}
+              </span>
+              <div style={{ width: '85%', height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{
                   height: '100%', borderRadius: 3, transition: 'width 0.8s ease-out',
                   width: `${Math.min(100, npsPct)}%`,
                   background: npsPct >= 50 ? 'linear-gradient(90deg, #10b981, #34d399)' : npsPct >= 25 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f97316)',
                 }} />
+              </div>
+              <div style={{ fontSize: 9, color: '#64748b', textAlign: 'center', lineHeight: 1.4 }}>
+                Improved <strong style={{ color: '#E81F76' }}>{npsImprovement}</strong> of <strong>{npsTotal}</strong> pts needed
               </div>
             </div>
           </MetricSummaryCard>
