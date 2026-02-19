@@ -307,16 +307,10 @@ app.post('/api/rag', (req, res) => {
   }
 });
 
-// ─── AI Chat Endpoint (Google Gemini + SSE Streaming) ────────
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY || '';
-// Primary model + fallback (for when primary is rate-limited)
-const GEMINI_MODELS = [
-  'gemini-2.5-flash',       // Best quality (10 RPM, 250 RPD free tier)
-  'gemini-2.0-flash-lite',  // Higher quota fallback (30 RPM, 1500 RPD free tier)
-];
-function geminiUrl(model) {
-  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse&key=${GEMINI_API_KEY}`;
-}
+// ─── AI Chat Endpoint (Cerebras + SSE Streaming) ─────────────
+const CEREBRAS_API_KEY = process.env.CEREBRAS_API_KEY || '';
+const CEREBRAS_MODEL = process.env.CEREBRAS_MODEL || 'llama-3.3-70b';
+const CEREBRAS_URL = 'https://api.cerebras.ai/v1/chat/completions';
 
 // Build data section for a single function+FY dataset
 function buildDataSection(data) {
@@ -459,79 +453,53 @@ app.post('/api/chat', async (req, res) => {
   res.setHeader('Connection', 'keep-alive');
   res.setHeader('X-Accel-Buffering', 'no');
 
-  // Build Gemini contents array with conversation history
-  const contents = [];
+  // Build OpenAI-compatible messages array
+  const messages = [
+    { role: 'system', content: systemPrompt },
+  ];
   if (history && Array.isArray(history)) {
     for (const msg of history.slice(-6)) {
-      contents.push({
-        role: msg.role === 'user' ? 'user' : 'model',
-        parts: [{ text: msg.content }],
+      messages.push({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.content,
       });
     }
   }
-  contents.push({
-    role: 'user',
-    parts: [{ text: message }],
-  });
+  messages.push({ role: 'user', content: message });
 
   try {
-    const reqBody = JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 60000);
+
+    console.log(`Cerebras: sending to ${CEREBRAS_MODEL}...`);
+    const cerebrasRes = await fetch(CEREBRAS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${CEREBRAS_API_KEY}`,
       },
-      contents,
-      generationConfig: {
+      signal: controller.signal,
+      body: JSON.stringify({
+        model: CEREBRAS_MODEL,
+        messages,
+        stream: true,
         temperature: 0.3,
-        maxOutputTokens: 1024,
-      },
+        max_completion_tokens: 1024,
+      }),
     });
 
-    // Try models in order: primary first, then fallback on 429
-    let geminiRes = null;
-    let usedModel = GEMINI_MODELS[0];
+    clearTimeout(timeout);
 
-    for (const model of GEMINI_MODELS) {
-      const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 60000);
-
-      const attempt = await fetch(geminiUrl(model), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: reqBody,
-      });
-
-      clearTimeout(timeout);
-
-      if (attempt.ok) {
-        geminiRes = attempt;
-        usedModel = model;
-        console.log(`Gemini: using ${model}`);
-        break;
-      }
-
-      if (attempt.status === 429) {
-        const errBody = await attempt.text();
-        console.warn(`Gemini 429 on ${model}, trying fallback...`);
-        continue;
-      }
-
-      const errBody = await attempt.text();
-      console.error('Gemini API error:', attempt.status, errBody);
-      res.write(`data: ${JSON.stringify({ error: `Gemini error: ${attempt.status}` })}\n\n`);
+    if (!cerebrasRes.ok) {
+      const errBody = await cerebrasRes.text();
+      console.error('Cerebras API error:', cerebrasRes.status, errBody);
+      res.write(`data: ${JSON.stringify({ error: `Cerebras error: ${cerebrasRes.status}` })}\n\n`);
       res.write('data: [DONE]\n\n');
       return res.end();
     }
 
-    if (!geminiRes) {
-      console.error('All Gemini models rate-limited (429)');
-      res.write(`data: ${JSON.stringify({ error: 'AI models are rate-limited. Please wait a minute and try again.' })}\n\n`);
-      res.write('data: [DONE]\n\n');
-      return res.end();
-    }
-
-    // Parse Gemini SSE stream using Web ReadableStream API
-    const reader = geminiRes.body.getReader();
+    // Parse OpenAI-compatible SSE stream
+    const reader = cerebrasRes.body.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
     let aborted = false;
@@ -556,11 +524,13 @@ app.post('/api/chat', async (req, res) => {
             if (!trimmed || !trimmed.startsWith('data: ')) continue;
 
             const jsonStr = trimmed.slice(6);
+            if (jsonStr === '[DONE]') break;
             if (!jsonStr) continue;
 
             try {
               const parsed = JSON.parse(jsonStr);
-              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              // OpenAI format: { choices: [{ delta: { content: "..." } }] }
+              const text = parsed?.choices?.[0]?.delta?.content;
               if (text) {
                 res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
               }
@@ -573,10 +543,10 @@ app.post('/api/chat', async (req, res) => {
         // Process remaining buffer
         if (buffer.trim()) {
           const trimmed = buffer.trim();
-          if (trimmed.startsWith('data: ')) {
+          if (trimmed.startsWith('data: ') && trimmed.slice(6) !== '[DONE]') {
             try {
               const parsed = JSON.parse(trimmed.slice(6));
-              const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
+              const text = parsed?.choices?.[0]?.delta?.content;
               if (text) {
                 res.write(`data: ${JSON.stringify({ token: text })}\n\n`);
               }
@@ -585,7 +555,7 @@ app.post('/api/chat', async (req, res) => {
         }
       } catch (err) {
         if (!aborted) {
-          console.error('Gemini stream error:', err);
+          console.error('Cerebras stream error:', err);
           if (!res.writableEnded) {
             res.write(`data: ${JSON.stringify({ error: 'Stream error' })}\n\n`);
           }
