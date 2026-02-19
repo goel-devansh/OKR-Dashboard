@@ -2055,6 +2055,42 @@ function DashboardContent() {
         </div>
       </header>
 
+      {/* ====== Loading screen while switching functions / fetching data ====== */}
+      {loading && !data && (
+        <div style={{
+          flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          gap: 20,
+        }}>
+          <style>{`
+            @keyframes spinRing { to { transform: rotate(360deg); } }
+            @keyframes loadPulse { 0%,100% { opacity: 0.4; } 50% { opacity: 1; } }
+          `}</style>
+          <div style={{ position: 'relative', width: 56, height: 56 }}>
+            <div style={{
+              width: 56, height: 56, borderRadius: '50%',
+              border: '3px solid #f1f5f9',
+              borderTopColor: '#E81F76',
+              animation: 'spinRing 0.9s linear infinite',
+            }} />
+            <div style={{
+              position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)',
+              fontSize: 20,
+            }}>📊</div>
+          </div>
+          <div style={{ textAlign: 'center' }}>
+            <div style={{
+              fontSize: 15, fontWeight: 700, color: '#1e293b', marginBottom: 4,
+              animation: 'loadPulse 1.5s ease-in-out infinite',
+            }}>
+              Loading {selectedFunction || ''} Dashboard...
+            </div>
+            <div style={{ fontSize: 12, color: '#94a3b8' }}>
+              Fetching {selectedFY || ''} data
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ====== Placeholder when no data is available ====== */}
       {!loading && !data && selectedFunction && (
         <div style={{
