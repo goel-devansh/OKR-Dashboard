@@ -2543,10 +2543,11 @@ function ChatBubble({ selectedFunction, selectedFY }) {
   useEffect(() => { if (isOpen && inputRef.current) inputRef.current.focus(); }, [isOpen]);
 
   const suggestedQuestions = [
-    '📊 CEO Summary',
-    '⚠️ Underperforming metrics',
-    '🏆 Top performers',
-    '💰 Billing vs Collection',
+    { icon: '📊', text: 'CEO Summary' },
+    { icon: '⚠️', text: 'Underperforming metrics' },
+    { icon: '🏆', text: 'Top performers' },
+    { icon: '💰', text: 'Billing vs Collection' },
+    { icon: '🔄', text: 'Compare KAM vs SALES' },
   ];
 
   const sendMessage = useCallback(async (text) => {
@@ -2597,7 +2598,7 @@ function ChatBubble({ selectedFunction, selectedFY }) {
               });
             }
             if (parsed.error) {
-              fullText = `❌ ${parsed.error}`;
+              fullText = `Error: ${parsed.error}`;
               setMessages(prev => {
                 const updated = [...prev];
                 updated[updated.length - 1] = { role: 'assistant', content: fullText, streaming: false };
@@ -2617,8 +2618,8 @@ function ChatBubble({ selectedFunction, selectedFY }) {
       });
     } catch (err) {
       const errorMsg = err.message.includes('Failed to fetch')
-        ? '❌ Cannot connect to server. Make sure the backend is running: `npm run server`'
-        : `❌ Error: ${err.message}`;
+        ? 'Cannot connect to server. Make sure the backend is running.'
+        : `Error: ${err.message}`;
       setMessages(prev => {
         const updated = [...prev];
         updated[updated.length - 1] = { role: 'assistant', content: errorMsg, streaming: false };
@@ -2635,160 +2636,300 @@ function ChatBubble({ selectedFunction, selectedFY }) {
     }
   }, [sendMessage]);
 
-  // Styles
-  const bubbleBtn = {
-    position: 'fixed', bottom: 24, right: 24, zIndex: 10000,
-    width: 56, height: 56, borderRadius: '50%',
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center',
-    boxShadow: '0 4px 20px rgba(102, 126, 234, 0.4)',
-    transition: 'transform 0.2s, box-shadow 0.2s',
-  };
+  /* ── AI Avatar component with pulsing glow ── */
+  const AIAvatar = ({ size = 28, animate = false }) => (
+    <div style={{
+      width: size, height: size, borderRadius: '50%',
+      background: 'linear-gradient(135deg, #E81F76, #ff6b9d)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      boxShadow: animate ? '0 0 12px rgba(232, 31, 118, 0.5), 0 0 24px rgba(232, 31, 118, 0.2)' : '0 0 8px rgba(232, 31, 118, 0.3)',
+      animation: animate ? 'aiPulse 2s ease-in-out infinite' : 'none',
+      flexShrink: 0,
+    }}>
+      <svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+        <path d="M9 14h6"/>
+        <rect x="8" y="12" width="8" height="8" rx="2"/>
+        <circle cx="10" cy="16" r="1" fill="#fff"/>
+        <circle cx="14" cy="16" r="1" fill="#fff"/>
+      </svg>
+    </div>
+  );
 
-  const chatWindow = {
-    position: 'fixed', bottom: 90, right: 24, zIndex: 10000,
-    width: 400, height: 520, borderRadius: 16,
-    background: '#fff', border: '1px solid #e2e8f0',
-    boxShadow: '0 20px 60px rgba(0,0,0,0.15)',
-    display: 'flex', flexDirection: 'column', overflow: 'hidden',
-    animation: 'chatSlideUp 0.3s ease-out',
-  };
-
-  const headerStyle = {
-    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-    color: '#fff', padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-  };
-
-  const msgArea = {
-    flex: 1, overflowY: 'auto', padding: '16px',
-    display: 'flex', flexDirection: 'column', gap: 12,
-    background: '#f8fafc',
-  };
-
-  const inputArea = {
-    padding: '12px 16px', borderTop: '1px solid #e2e8f0',
-    display: 'flex', gap: 8, background: '#fff',
-  };
+  /* ── Typing indicator (three dots) ── */
+  const TypingIndicator = () => (
+    <div style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '4px 0' }}>
+      {[0, 1, 2].map(i => (
+        <span key={i} style={{
+          width: 7, height: 7, borderRadius: '50%',
+          background: '#E81F76',
+          animation: `typingBounce 1.2s ease-in-out ${i * 0.15}s infinite`,
+          opacity: 0.6,
+        }} />
+      ))}
+    </div>
+  );
 
   return (
     <>
-      {/* Chat animation keyframes */}
+      {/* ── Futuristic Chat Styles ── */}
       <style>{`
         @keyframes chatSlideUp {
-          from { opacity: 0; transform: translateY(20px); }
-          to { opacity: 1; transform: translateY(0); }
+          from { opacity: 0; transform: translateY(20px) scale(0.95); }
+          to { opacity: 1; transform: translateY(0) scale(1); }
         }
-        .chat-msg-md p { margin: 0 0 8px 0; }
-        .chat-msg-md p:last-child { margin-bottom: 0; }
-        .chat-msg-md ul, .chat-msg-md ol { margin: 4px 0; padding-left: 20px; }
-        .chat-msg-md li { margin: 2px 0; }
-        .chat-msg-md strong { color: #1a1a2e; }
-        .chat-msg-md code { background: #f1f5f9; padding: 1px 4px; borderRadius: 3px; fontSize: 12px; }
-        .chat-bubble-btn:hover { transform: scale(1.1); box-shadow: 0 6px 25px rgba(102, 126, 234, 0.5); }
-        .chat-input:focus { outline: none; border-color: #667eea; box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.15); }
-        .chat-suggested:hover { background: #667eea !important; color: #fff !important; }
-        .chat-msg-area::-webkit-scrollbar { width: 6px; }
-        .chat-msg-area::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        @keyframes aiPulse {
+          0%, 100% { box-shadow: 0 0 8px rgba(232,31,118,0.4), 0 0 16px rgba(232,31,118,0.15); }
+          50% { box-shadow: 0 0 16px rgba(232,31,118,0.6), 0 0 32px rgba(232,31,118,0.25); }
+        }
+        @keyframes typingBounce {
+          0%, 60%, 100% { transform: translateY(0); opacity: 0.4; }
+          30% { transform: translateY(-6px); opacity: 1; }
+        }
+        @keyframes floatBtn {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-4px); }
+        }
+        @keyframes glowRing {
+          0%, 100% { box-shadow: 0 0 12px rgba(232,31,118,0.4), 0 0 24px rgba(232,31,118,0.15); }
+          50% { box-shadow: 0 0 20px rgba(232,31,118,0.6), 0 0 40px rgba(232,31,118,0.2); }
+        }
+        @keyframes blink {
+          0%, 50% { opacity: 1; }
+          51%, 100% { opacity: 0; }
+        }
+        @keyframes shimmer {
+          0% { background-position: -200% center; }
+          100% { background-position: 200% center; }
+        }
+        .fx-chat-bubble-btn {
+          animation: floatBtn 3s ease-in-out infinite, glowRing 2s ease-in-out infinite;
+        }
+        .fx-chat-bubble-btn:hover {
+          transform: scale(1.12) !important;
+          box-shadow: 0 0 24px rgba(232,31,118,0.6), 0 0 48px rgba(232,31,118,0.25) !important;
+        }
+        .fx-chat-window {
+          animation: chatSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .fx-msg-area::-webkit-scrollbar { width: 5px; }
+        .fx-msg-area::-webkit-scrollbar-track { background: transparent; }
+        .fx-msg-area::-webkit-scrollbar-thumb { background: rgba(232,31,118,0.2); border-radius: 10px; }
+        .fx-msg-area::-webkit-scrollbar-thumb:hover { background: rgba(232,31,118,0.4); }
+        .fx-chat-input:focus {
+          outline: none;
+          border-color: #E81F76;
+          box-shadow: 0 0 0 3px rgba(232,31,118,0.1), 0 0 12px rgba(232,31,118,0.08);
+        }
+        .fx-suggested-btn {
+          transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .fx-suggested-btn:hover {
+          background: linear-gradient(135deg, #E81F76, #ff6b9d) !important;
+          color: #fff !important;
+          border-color: transparent !important;
+          transform: translateY(-2px);
+          box-shadow: 0 4px 12px rgba(232,31,118,0.3);
+        }
+        .fx-send-btn:hover:not(:disabled) {
+          box-shadow: 0 4px 16px rgba(232,31,118,0.4);
+          transform: scale(1.05);
+        }
+        .fx-clear-btn:hover {
+          background: rgba(255,255,255,0.25) !important;
+        }
+        .fx-chat-md p { margin: 0 0 8px 0; line-height: 1.6; }
+        .fx-chat-md p:last-child { margin-bottom: 0; }
+        .fx-chat-md ul, .fx-chat-md ol { margin: 6px 0; padding-left: 18px; }
+        .fx-chat-md li { margin: 3px 0; line-height: 1.5; }
+        .fx-chat-md strong { color: #E81F76; font-weight: 600; }
+        .fx-chat-md code { background: rgba(232,31,118,0.08); color: #E81F76; padding: 1px 5px; border-radius: 4px; font-size: 12px; }
+        .fx-chat-md h1, .fx-chat-md h2, .fx-chat-md h3 { font-size: 13px; font-weight: 700; margin: 10px 0 4px 0; color: #1a1a2e; }
       `}</style>
 
-      {/* Floating chat bubble button */}
+      {/* ── Floating Chat Button ── */}
       {!isOpen && (
         <button
-          className="chat-bubble-btn"
+          className="fx-chat-bubble-btn"
           onClick={() => setIsOpen(true)}
-          style={bubbleBtn}
           title="Ask AI about your dashboard"
+          style={{
+            position: 'fixed', bottom: 24, right: 24, zIndex: 10000,
+            width: 58, height: 58, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #E81F76 0%, #ff6b9d 100%)',
+            border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s',
+          }}
         >
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M12 2a4 4 0 0 1 4 4v2a4 4 0 0 1-8 0V6a4 4 0 0 1 4-4z"/>
+            <path d="M9 14h6"/>
+            <rect x="8" y="12" width="8" height="8" rx="2"/>
+            <circle cx="10" cy="16" r="1" fill="#fff"/>
+            <circle cx="14" cy="16" r="1" fill="#fff"/>
           </svg>
         </button>
       )}
 
-      {/* Chat window */}
+      {/* ── Chat Window ── */}
       {isOpen && (
-        <div style={chatWindow}>
-          {/* Header */}
-          <div style={headerStyle}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-              </svg>
+        <div className="fx-chat-window" style={{
+          position: 'fixed', bottom: 90, right: 24, zIndex: 10000,
+          width: 400, height: 520, borderRadius: 20,
+          background: '#0f0f1a',
+          border: '1px solid rgba(232,31,118,0.2)',
+          boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 30px rgba(232,31,118,0.08)',
+          display: 'flex', flexDirection: 'column', overflow: 'hidden',
+        }}>
+
+          {/* ── Header ── */}
+          <div style={{
+            background: 'linear-gradient(135deg, rgba(232,31,118,0.15) 0%, rgba(255,107,157,0.08) 100%)',
+            borderBottom: '1px solid rgba(232,31,118,0.15)',
+            padding: '14px 18px', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <AIAvatar size={34} animate={isStreaming} />
               <div>
-                <div style={{ fontWeight: 700, fontSize: 15 }}>AI Assistant</div>
-                <div style={{ fontSize: 11, opacity: 0.85 }}>{selectedFunction} • {selectedFY}</div>
+                <div style={{
+                  fontWeight: 700, fontSize: 14, color: '#fff',
+                  letterSpacing: '0.5px',
+                }}>OKR AI Analyst</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                  <span style={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    background: isStreaming ? '#fbbf24' : '#34d399',
+                    boxShadow: isStreaming ? '0 0 6px rgba(251,191,36,0.5)' : '0 0 6px rgba(52,211,153,0.5)',
+                    animation: isStreaming ? 'blink 1s infinite' : 'none',
+                  }} />
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: 500 }}>
+                    {isStreaming ? 'Analyzing...' : `${selectedFunction} \u00b7 ${selectedFY}`}
+                  </span>
+                </div>
               </div>
             </div>
-            <div style={{ display: 'flex', gap: 8 }}>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               {messages.length > 0 && (
                 <button
+                  className="fx-clear-btn"
                   onClick={() => setMessages([])}
-                  style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: 6, color: '#fff', cursor: 'pointer', padding: '4px 10px', fontSize: 12 }}
                   title="Clear chat"
+                  style={{
+                    background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)',
+                    borderRadius: 8, color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                    padding: '5px 12px', fontSize: 11, fontWeight: 500,
+                    transition: 'all 0.2s', letterSpacing: '0.3px',
+                  }}
                 >Clear</button>
               )}
               <button
                 onClick={() => setIsOpen(false)}
-                style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: '0 4px' }}
-              >✕</button>
+                style={{
+                  background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.1)',
+                  borderRadius: 8, color: 'rgba(255,255,255,0.6)', cursor: 'pointer',
+                  width: 30, height: 30, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: 16, transition: 'all 0.2s',
+                }}
+              >{'\u2715'}</button>
             </div>
           </div>
 
-          {/* Messages */}
-          <div className="chat-msg-area" style={msgArea}>
+          {/* ── Messages Area ── */}
+          <div className="fx-msg-area" style={{
+            flex: 1, overflowY: 'auto', padding: '16px',
+            display: 'flex', flexDirection: 'column', gap: 14,
+            background: 'linear-gradient(180deg, #0f0f1a 0%, #141425 100%)',
+          }}>
+            {/* Welcome screen */}
             {messages.length === 0 && (
-              <div style={{ textAlign: 'center', padding: '20px 10px' }}>
-                <div style={{ fontSize: 40, marginBottom: 12 }}>🤖</div>
-                <div style={{ fontSize: 15, fontWeight: 600, color: '#1a1a2e', marginBottom: 6 }}>
-                  Hi! I'm your dashboard AI assistant.
+              <div style={{ textAlign: 'center', padding: '16px 8px' }}>
+                <div style={{
+                  width: 56, height: 56, borderRadius: '50%', margin: '0 auto 14px',
+                  background: 'linear-gradient(135deg, rgba(232,31,118,0.15), rgba(255,107,157,0.08))',
+                  border: '1px solid rgba(232,31,118,0.2)',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <AIAvatar size={36} animate />
                 </div>
-                <div style={{ fontSize: 13, color: '#64748b', marginBottom: 20 }}>
-                  Ask me anything about your {selectedFunction} {selectedFY} metrics.
+                <div style={{
+                  fontSize: 16, fontWeight: 700, color: '#fff', marginBottom: 6,
+                  letterSpacing: '0.3px',
+                }}>
+                  OKR AI Analyst
                 </div>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, justifyContent: 'center' }}>
+                <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 22, lineHeight: 1.5 }}>
+                  Ask about any metric across KAM, SALES, and all fiscal years.
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
                   {suggestedQuestions.map((q) => (
                     <button
-                      key={q}
-                      className="chat-suggested"
-                      onClick={() => sendMessage(q)}
+                      key={q.text}
+                      className="fx-suggested-btn"
+                      onClick={() => sendMessage(`${q.icon} ${q.text}`)}
                       style={{
-                        background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: 20,
-                        padding: '6px 14px', fontSize: 12, cursor: 'pointer', color: '#475569',
-                        transition: 'all 0.2s',
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: 12, padding: '10px 14px',
+                        fontSize: 12, cursor: 'pointer',
+                        color: 'rgba(255,255,255,0.7)',
+                        display: 'flex', alignItems: 'center', gap: 10,
+                        textAlign: 'left',
                       }}
-                    >{q}</button>
+                    >
+                      <span style={{ fontSize: 16, flexShrink: 0 }}>{q.icon}</span>
+                      <span>{q.text}</span>
+                    </button>
                   ))}
                 </div>
               </div>
             )}
 
+            {/* Message bubbles */}
             {messages.map((msg, i) => (
-              <div
-                key={i}
-                style={{
-                  display: 'flex',
-                  justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
-                }}
-              >
+              <div key={i} style={{
+                display: 'flex', gap: 10,
+                flexDirection: msg.role === 'user' ? 'row-reverse' : 'row',
+                alignItems: 'flex-start',
+              }}>
+                {/* Avatar for bot messages */}
+                {msg.role === 'assistant' && (
+                  <AIAvatar size={26} animate={msg.streaming} />
+                )}
+
                 <div style={{
-                  maxWidth: '85%',
+                  maxWidth: '80%',
                   padding: '10px 14px',
-                  borderRadius: msg.role === 'user' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                  borderRadius: msg.role === 'user' ? '14px 14px 4px 14px' : '14px 14px 14px 4px',
                   background: msg.role === 'user'
-                    ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-                    : '#fff',
-                  color: msg.role === 'user' ? '#fff' : '#1e293b',
-                  fontSize: 13, lineHeight: 1.5,
-                  boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-                  border: msg.role === 'user' ? 'none' : '1px solid #e2e8f0',
+                    ? 'linear-gradient(135deg, #E81F76, #ff6b9d)'
+                    : 'rgba(255,255,255,0.06)',
+                  color: msg.role === 'user' ? '#fff' : 'rgba(255,255,255,0.88)',
+                  fontSize: 13, lineHeight: 1.55,
+                  border: msg.role === 'user' ? 'none' : '1px solid rgba(255,255,255,0.06)',
+                  boxShadow: msg.role === 'user'
+                    ? '0 2px 12px rgba(232,31,118,0.25)'
+                    : '0 1px 4px rgba(0,0,0,0.15)',
                 }}>
                   {msg.role === 'user' ? (
-                    <span>{msg.content}</span>
+                    <span style={{ fontWeight: 500 }}>{msg.content}</span>
                   ) : (
-                    <div className="chat-msg-md">
-                      <ReactMarkdown>{msg.content || (msg.streaming ? '⏳ Thinking...' : '')}</ReactMarkdown>
-                      {msg.streaming && msg.content && (
-                        <span style={{ display: 'inline-block', width: 6, height: 14, background: '#667eea', marginLeft: 2, animation: 'blink 1s infinite', verticalAlign: 'text-bottom' }} />
+                    <div className="fx-chat-md">
+                      {!msg.content && msg.streaming ? (
+                        <TypingIndicator />
+                      ) : (
+                        <>
+                          <ReactMarkdown>{msg.content}</ReactMarkdown>
+                          {msg.streaming && msg.content && (
+                            <span style={{
+                              display: 'inline-block', width: 2, height: 14,
+                              background: '#E81F76', marginLeft: 2,
+                              animation: 'blink 0.8s infinite',
+                              verticalAlign: 'text-bottom',
+                              boxShadow: '0 0 4px rgba(232,31,118,0.5)',
+                            }} />
+                          )}
+                        </>
                       )}
                     </div>
                   )}
@@ -2798,32 +2939,44 @@ function ChatBubble({ selectedFunction, selectedFY }) {
             <div ref={messagesEndRef} />
           </div>
 
-          {/* Input */}
-          <div style={inputArea}>
+          {/* ── Input Area ── */}
+          <div style={{
+            padding: '12px 14px',
+            borderTop: '1px solid rgba(232,31,118,0.1)',
+            display: 'flex', gap: 8,
+            background: 'rgba(15,15,26,0.95)',
+          }}>
             <input
               ref={inputRef}
-              className="chat-input"
+              className="fx-chat-input"
               type="text"
-              placeholder="Ask about your metrics..."
+              placeholder={isStreaming ? 'AI is thinking...' : 'Ask about your metrics...'}
               value={input}
               onChange={e => setInput(e.target.value)}
               onKeyDown={handleKeyDown}
               disabled={isStreaming}
               style={{
-                flex: 1, padding: '10px 14px', borderRadius: 10,
-                border: '1px solid #e2e8f0', fontSize: 13,
-                transition: 'border-color 0.2s, box-shadow 0.2s',
+                flex: 1, padding: '11px 14px', borderRadius: 12,
+                border: '1px solid rgba(255,255,255,0.1)',
+                background: 'rgba(255,255,255,0.05)',
+                color: '#fff', fontSize: 13,
+                transition: 'all 0.25s',
               }}
             />
             <button
+              className="fx-send-btn"
               onClick={() => sendMessage()}
               disabled={isStreaming || !input.trim()}
               style={{
-                width: 40, height: 40, borderRadius: 10, border: 'none',
-                background: isStreaming || !input.trim() ? '#e2e8f0' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                color: '#fff', cursor: isStreaming || !input.trim() ? 'not-allowed' : 'pointer',
+                width: 42, height: 42, borderRadius: 12, border: 'none',
+                background: isStreaming || !input.trim()
+                  ? 'rgba(255,255,255,0.05)'
+                  : 'linear-gradient(135deg, #E81F76, #ff6b9d)',
+                color: isStreaming || !input.trim() ? 'rgba(255,255,255,0.2)' : '#fff',
+                cursor: isStreaming || !input.trim() ? 'not-allowed' : 'pointer',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                transition: 'background 0.2s',
+                transition: 'all 0.25s',
+                boxShadow: isStreaming || !input.trim() ? 'none' : '0 2px 12px rgba(232,31,118,0.3)',
               }}
             >
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2831,11 +2984,18 @@ function ChatBubble({ selectedFunction, selectedFY }) {
               </svg>
             </button>
           </div>
+
+          {/* ── Powered by footer ── */}
+          <div style={{
+            textAlign: 'center', padding: '6px',
+            fontSize: 9, color: 'rgba(255,255,255,0.2)',
+            borderTop: '1px solid rgba(255,255,255,0.03)',
+            letterSpacing: '0.5px', fontWeight: 500,
+          }}>
+            POWERED BY GEMINI 2.5 FLASH
+          </div>
         </div>
       )}
-
-      {/* Blink cursor animation */}
-      <style>{`@keyframes blink { 0%, 50% { opacity: 1; } 51%, 100% { opacity: 0; } }`}</style>
     </>
   );
 }
