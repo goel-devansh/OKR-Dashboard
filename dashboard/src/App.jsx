@@ -2568,6 +2568,11 @@ function ChatBubble({ selectedFunction, selectedFY }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [btnBottom, setBtnBottom] = useState(24);
+  const isDragging = useRef(false);
+  const dragStartY = useRef(0);
+  const dragStartBottom = useRef(0);
+  const hasDragged = useRef(false);
   const messagesEndRef = useRef(null);
   const inputRef = useRef(null);
 
@@ -2577,6 +2582,30 @@ function ChatBubble({ selectedFunction, selectedFY }) {
 
   useEffect(() => { scrollToBottom(); }, [messages, scrollToBottom]);
   useEffect(() => { if (isOpen && inputRef.current) inputRef.current.focus(); }, [isOpen]);
+
+  // Drag handlers for the floating button
+  const onPointerDown = useCallback((e) => {
+    isDragging.current = true;
+    hasDragged.current = false;
+    dragStartY.current = e.clientY;
+    dragStartBottom.current = btnBottom;
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, [btnBottom]);
+
+  const onPointerMove = useCallback((e) => {
+    if (!isDragging.current) return;
+    const delta = dragStartY.current - e.clientY;
+    if (Math.abs(delta) > 4) hasDragged.current = true;
+    const newBottom = Math.max(10, Math.min(window.innerHeight - 70, dragStartBottom.current + delta));
+    setBtnBottom(newBottom);
+  }, []);
+
+  const onPointerUp = useCallback((e) => {
+    isDragging.current = false;
+    if (!hasDragged.current) {
+      setIsOpen(true);
+    }
+  }, []);
 
   const suggestedQuestions = [
     { icon: '📊', text: 'CEO Summary' },
@@ -2783,19 +2812,23 @@ function ChatBubble({ selectedFunction, selectedFY }) {
         .fx-chat-md h1, .fx-chat-md h2, .fx-chat-md h3 { font-size: 13px; font-weight: 700; margin: 10px 0 4px 0; color: #1a1a2e; }
       `}</style>
 
-      {/* ── Floating Chat Button ── */}
+      {/* ── Floating Chat Button (draggable) ── */}
       {!isOpen && (
         <button
           className="fx-chat-bubble-btn"
-          onClick={() => setIsOpen(true)}
-          title="Ask AI about your dashboard"
+          onPointerDown={onPointerDown}
+          onPointerMove={onPointerMove}
+          onPointerUp={onPointerUp}
+          title="Drag to reposition \u2022 Click to open"
           style={{
-            position: 'fixed', bottom: 24, right: 24, zIndex: 10000,
+            position: 'fixed', bottom: btnBottom, right: 24, zIndex: 10000,
             width: 58, height: 58, borderRadius: '50%',
             background: 'linear-gradient(135deg, #E81F76 0%, #ff6b9d 100%)',
-            border: '2px solid rgba(255,255,255,0.2)', cursor: 'pointer',
+            border: '2px solid rgba(255,255,255,0.2)',
+            cursor: isDragging.current ? 'grabbing' : 'grab',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s',
+            transition: isDragging.current ? 'none' : 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s',
+            touchAction: 'none',
           }}
         >
           <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -2811,7 +2844,7 @@ function ChatBubble({ selectedFunction, selectedFY }) {
       {/* ── Chat Window ── */}
       {isOpen && (
         <div className="fx-chat-window" style={{
-          position: 'fixed', bottom: 90, right: 24, zIndex: 10000,
+          position: 'fixed', bottom: Math.min(btnBottom + 66, window.innerHeight - 530), right: 24, zIndex: 10000,
           width: 400, height: 520, borderRadius: 20,
           background: '#0f0f1a',
           border: '1px solid rgba(232,31,118,0.2)',
