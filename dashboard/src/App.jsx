@@ -536,10 +536,15 @@ function generateTakeaways(annualMetrics, billingTotals, collectionTotals, billi
     else if (srvPct < 0.7) takeaways.push({ type: 'alert', text: `Service Revenue behind at ${(srvPct * 100).toFixed(0)}% — gap of ${formatCrore(annualMetrics.serviceRev.targetFY26 - annualMetrics.serviceRev.achievementTillDate, 0)}` });
   }
 
-  // NPS
+  // NPS (improvement-based)
   if (annualMetrics?.nps) {
-    if (annualMetrics.nps.achievementTillDate < 0) takeaways.push({ type: 'alert', text: `NPS is negative (${annualMetrics.nps.achievementTillDate}) — customer satisfaction needs immediate focus` });
-    else if (annualMetrics.nps.achievementTillDate >= annualMetrics.nps.targetFY26) takeaways.push({ type: 'good', text: `NPS on target at ${annualMetrics.nps.achievementTillDate}` });
+    const npsBase = annualMetrics.nps.baseline ?? 0;
+    const npsImpr = annualMetrics.nps.achievementTillDate - npsBase;
+    const npsNeeded = annualMetrics.nps.targetFY26 - npsBase;
+    const npsPctDone = npsNeeded !== 0 ? (npsImpr / npsNeeded) * 100 : 0;
+    if (npsPctDone >= 100) takeaways.push({ type: 'good', text: `NPS target achieved! Improved from ${npsBase} to ${annualMetrics.nps.achievementTillDate} (target: +${annualMetrics.nps.targetFY26})` });
+    else if (npsPctDone >= 50) takeaways.push({ type: 'alert', text: `NPS improving (${npsBase} \u2192 ${annualMetrics.nps.achievementTillDate}) but ${Math.round(annualMetrics.nps.targetFY26 - annualMetrics.nps.achievementTillDate)} pts still needed to hit +${annualMetrics.nps.targetFY26}` });
+    else takeaways.push({ type: 'alert', text: `NPS improvement slow (${npsBase} \u2192 ${annualMetrics.nps.achievementTillDate}, only ${npsPctDone.toFixed(0)}% of needed improvement) \u2014 needs acceleration` });
   }
 
   // Billing timeliness
@@ -664,7 +669,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
     collection: { label: 'On-Time Collection', target: fmt(collTarget, 'cr'), achievement: fmt(collAch, 'cr'), pct: collectionTimeliness },
     ndr: { label: 'Net Dollar Retention (NDR)', target: `${((annualMetrics?.ndr?.targetFY26 || 0) * 100).toFixed(0)}%`, achievement: `${((annualMetrics?.ndr?.achievementTillDate || 0) * 100).toFixed(0)}%`, pct: metricAchievements.ndr },
     gdr: { label: 'Gross Dollar Retention (GDR)', target: `${((annualMetrics?.gdr?.targetFY26 || 0) * 100).toFixed(0)}%`, achievement: `${((annualMetrics?.gdr?.achievementTillDate || 0) * 100).toFixed(0)}%`, pct: metricAchievements.gdr },
-    nps: { label: 'NPS Score', target: String(Math.round(annualMetrics?.nps?.targetFY26 || 0)), achievement: String(Math.round(annualMetrics?.nps?.achievementTillDate || 0)), pct: metricAchievements.nps },
+    nps: { label: 'NPS Score (Improvement)', target: `${Math.round(annualMetrics?.nps?.baseline ?? 0)} \u2192 ${Math.round(annualMetrics?.nps?.targetFY26 || 0)}`, achievement: String(Math.round(annualMetrics?.nps?.achievementTillDate || 0)), pct: metricAchievements.nps },
     qbr: { label: 'QBRs Held', target: String(Math.round(qbrTarTotal)), achievement: String(Math.round(qbrAchTotal)), pct: metricAchievements.qbr },
     heroStories: { label: 'Hero Stories', target: String(Math.round(heroTarTotal)), achievement: String(Math.round(heroAchTotal)), pct: metricAchievements.heroStories },
     pipelineCoverage: { label: 'Pipeline Coverage', target: '3x', achievement: `${(pipelineCoverage?.coverage || 0).toFixed(1)}x`, pct: metricAchievements.pipelineCoverage, isCoverage: true },
@@ -1109,24 +1114,80 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
     /* --- NPS Drill-Down --- */
     if (section === 'nps') {
       const m = annualMetrics.nps;
+      const hasBaseline = m.baseline !== undefined && m.baseline !== null;
+      const baseline = hasBaseline ? m.baseline : 0;
+      const improvement = m.achievementTillDate - baseline;
+      const totalNeeded = m.targetFY26 - baseline;
+      const achievementPct = totalNeeded !== 0 ? Math.max(0, (improvement / totalNeeded) * 100) : 0;
+      const remaining = m.targetFY26 - m.achievementTillDate;
+
       return (
         <div>
-          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }}>
-            <div style={{ background: '#f8fafc', borderRadius: 10, padding: 20, textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Target NPS</div>
-              <div style={{ fontSize: 32, fontWeight: 800, color: '#1e293b' }}>{m.targetFY26}</div>
+          {/* 3-box summary: Baseline, Current, Target */}
+          <div className="drill-stat-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 16 }}>
+            <div style={{ background: '#fef2f2', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Q1 Baseline</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#ef4444' }}>{baseline}</div>
             </div>
-            <div style={{ background: m.achievementTillDate >= 0 ? '#f0fdf4' : '#fef2f2', borderRadius: 10, padding: 20, textAlign: 'center' }}>
-              <div style={{ fontSize: 12, color: '#94a3b8', marginBottom: 6 }}>Current NPS</div>
-              <div style={{ fontSize: 32, fontWeight: 800, color: m.achievementTillDate >= 0 ? '#10b981' : '#ef4444' }}>{m.achievementTillDate}</div>
+            <div style={{ background: improvement > 0 ? '#fffbeb' : '#fef2f2', borderRadius: 10, padding: 16, textAlign: 'center', border: '2px solid #E81F76' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Current NPS</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: m.achievementTillDate >= 0 ? '#10b981' : '#f59e0b' }}>{m.achievementTillDate}</div>
+            </div>
+            <div style={{ background: '#f0fdf4', borderRadius: 10, padding: 16, textAlign: 'center' }}>
+              <div style={{ fontSize: 11, color: '#94a3b8', marginBottom: 4 }}>Target NPS</div>
+              <div style={{ fontSize: 28, fontWeight: 800, color: '#10b981' }}>+{m.targetFY26}</div>
             </div>
           </div>
-          <div style={{ background: m.achievementTillDate < 0 ? '#fef2f2' : '#fffbeb', borderRadius: 10, padding: 16 }}>
-            <p style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.6 }}>
-              NPS (Net Promoter Score) ranges from -100 to +100. A score above 0 means more promoters than detractors.
-              {m.achievementTillDate < 0
-                ? ` Current NPS of ${m.achievementTillDate} is negative — more customers are unhappy than happy. This needs immediate attention through customer outreach and issue resolution.`
-                : ` Current NPS of ${m.achievementTillDate} is positive but ${m.achievementTillDate < m.targetFY26 ? `below the target of ${m.targetFY26}` : 'on target'}.`
+
+          {/* Progress bar: Baseline → Current → Target */}
+          <div style={{ background: '#f8fafc', borderRadius: 10, padding: 16, marginBottom: 16 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, color: '#64748b', marginBottom: 8 }}>
+              <span>Improvement Progress</span>
+              <span style={{ fontWeight: 700, color: '#E81F76' }}>{achievementPct.toFixed(1)}%</span>
+            </div>
+            <div style={{ position: 'relative', height: 10, background: '#e2e8f0', borderRadius: 6, overflow: 'hidden' }}>
+              <div style={{
+                height: '100%', borderRadius: 6,
+                width: `${Math.min(100, achievementPct)}%`,
+                background: achievementPct >= 80 ? 'linear-gradient(90deg, #10b981, #34d399)' : achievementPct >= 40 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f97316)',
+                transition: 'width 0.5s',
+              }} />
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 10, color: '#94a3b8', marginTop: 4 }}>
+              <span>{baseline} (Q1)</span>
+              <span>+{m.targetFY26} (Target)</span>
+            </div>
+          </div>
+
+          {/* Calculation explanation */}
+          <div style={{ background: '#eef2ff', border: '1px solid #c7d2fe', borderRadius: 10, padding: 14, marginBottom: 16 }}>
+            <h4 style={{ fontSize: 13, fontWeight: 700, color: '#4338ca', marginBottom: 8 }}>How NPS Achievement is Calculated</h4>
+            <div style={{ fontSize: 12, color: '#475569', lineHeight: 1.8 }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 10 }}>
+                <div style={{ background: '#fff', borderRadius: 6, padding: '8px 10px' }}>
+                  <span style={{ color: '#94a3b8' }}>Improvement Made:</span>{' '}
+                  <strong>{m.achievementTillDate} - ({baseline}) = {improvement > 0 ? '+' : ''}{improvement} pts</strong>
+                </div>
+                <div style={{ background: '#fff', borderRadius: 6, padding: '8px 10px' }}>
+                  <span style={{ color: '#94a3b8' }}>Improvement Needed:</span>{' '}
+                  <strong>+{m.targetFY26} - ({baseline}) = {totalNeeded} pts</strong>
+                </div>
+              </div>
+              <div style={{ background: '#fff', borderRadius: 8, padding: '10px 12px', textAlign: 'center', border: '1px dashed #c7d2fe' }}>
+                <span style={{ color: '#94a3b8' }}>Achievement</span> ={' '}
+                <strong style={{ color: '#4338ca' }}>Improvement / Total Needed</strong> ={' '}
+                <strong>{improvement} / {totalNeeded}</strong> ={' '}
+                <span style={{ fontSize: 16, fontWeight: 800, color: '#E81F76' }}>{achievementPct.toFixed(1)}%</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Status message */}
+          <div style={{ background: remaining <= 0 ? '#f0fdf4' : '#fffbeb', borderRadius: 10, padding: 14 }}>
+            <p style={{ fontSize: 13, color: '#1e293b', lineHeight: 1.6, margin: 0 }}>
+              {remaining <= 0
+                ? `NPS target achieved! Current NPS of ${m.achievementTillDate} has met or exceeded the target of +${m.targetFY26}.`
+                : `NPS improved by ${improvement} points (from ${baseline} to ${m.achievementTillDate}). Still needs ${remaining} more points to reach the target of +${m.targetFY26}.`
               }
             </p>
           </div>
@@ -1872,7 +1933,18 @@ function DashboardContent() {
     if (weightages.pipelineCoverage) raw.pipelineCoverage = pcCoverage;
     if (weightages.ndr) raw.ndr = safeDiv(annualMetrics?.ndr?.achievementTillDate || 0, annualMetrics?.ndr?.targetFY26 || 1);
     if (weightages.gdr) raw.gdr = safeDiv(annualMetrics?.gdr?.achievementTillDate || 0, annualMetrics?.gdr?.targetFY26 || 1);
-    if (weightages.nps) raw.nps = safeDiv(Math.max(0, annualMetrics?.nps?.achievementTillDate || 0), annualMetrics?.nps?.targetFY26 || 1);
+    // NPS: improvement-based calculation when baseline exists
+    // Achievement = (YearEnd - Baseline) / (Target - Baseline)
+    if (weightages.nps) {
+      const npsData = annualMetrics?.nps;
+      if (npsData && npsData.baseline !== undefined && npsData.baseline !== null) {
+        const improvement = (npsData.achievementTillDate || 0) - npsData.baseline;
+        const totalNeeded = (npsData.targetFY26 || 0) - npsData.baseline;
+        raw.nps = totalNeeded !== 0 ? Math.max(0, improvement / totalNeeded) : 0;
+      } else {
+        raw.nps = safeDiv(Math.max(0, npsData?.achievementTillDate || 0), npsData?.targetFY26 || 1);
+      }
+    }
     if (weightages.billing) raw.billing = billingTimeliness.score;
     if (weightages.collection) raw.collection = collectionTimeliness.score;
     if (weightages.qbr) raw.qbr = safeDiv(qbrAchTotal, qbrTarTotal);
@@ -2297,32 +2369,43 @@ function DashboardContent() {
           )}
 
           {/* 6. NPS */}
-          {weightages.nps && annualMetrics?.nps && (
-          <MetricSummaryCard title="NPS Score" value={annualMetrics.nps.achievementTillDate}
-            target={annualMetrics.nps.targetFY26} unit=""
-            achievement={metricAchievements.nps} color={annualMetrics.nps.achievementTillDate < 0 ? '#ef4444' : '#10b981'}
+          {weightages.nps && annualMetrics?.nps && (() => {
+            const npsM = annualMetrics.nps;
+            const npsBaseline = npsM.baseline ?? 0;
+            const npsImprovement = npsM.achievementTillDate - npsBaseline;
+            const npsTotal = npsM.targetFY26 - npsBaseline;
+            const npsPct = npsTotal !== 0 ? Math.max(0, (npsImprovement / npsTotal) * 100) : 0;
+            return (
+          <MetricSummaryCard title="NPS Improvement" value={`${npsImprovement > 0 ? '+' : ''}${npsImprovement} pts`}
+            target={`${npsTotal} pts needed`} unit=""
+            achievement={metricAchievements.nps} color={npsPct >= 50 ? '#10b981' : npsPct >= 25 ? '#f59e0b' : '#ef4444'}
             onClick={() => openDrill('nps')}
           >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 4 }}>
-              <span style={{ fontSize: 28, fontWeight: 900, color: annualMetrics.nps.achievementTillDate < 0 ? '#ef4444' : '#10b981' }}>
-                {annualMetrics.nps.achievementTillDate}
-              </span>
-              <div style={{ width: '70%', height: 4, background: '#e2e8f0', borderRadius: 2, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: 2, transition: 'width 0.8s ease-out',
-                  width: `${Math.max(0, Math.min(100, ((annualMetrics.nps.achievementTillDate + 100) / 200) * 100))}%`,
-                  background: annualMetrics.nps.achievementTillDate < 0
-                    ? `linear-gradient(90deg, #ef4444, #f97316)` : `linear-gradient(90deg, #10b981, #34d399)`,
-                }} />
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 6 }}>
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                <span style={{ fontSize: 26, fontWeight: 900, color: '#E81F76' }}>
+                  {npsM.achievementTillDate}
+                </span>
+                <span style={{ fontSize: 11, color: '#94a3b8' }}>current</span>
               </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '70%', fontSize: 7, color: '#94a3b8' }}>
-                <span>-100</span>
-                <span>0</span>
-                <span>+100</span>
+              <div style={{ fontSize: 10, color: '#64748b', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <span style={{ color: '#ef4444', fontWeight: 700 }}>{npsBaseline}</span>
+                <span>{'\u2192'}</span>
+                <span style={{ color: '#E81F76', fontWeight: 700 }}>{npsM.achievementTillDate}</span>
+                <span>{'\u2192'}</span>
+                <span style={{ color: '#10b981', fontWeight: 700 }}>+{npsM.targetFY26}</span>
+              </div>
+              <div style={{ width: '80%', height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{
+                  height: '100%', borderRadius: 3, transition: 'width 0.8s ease-out',
+                  width: `${Math.min(100, npsPct)}%`,
+                  background: npsPct >= 50 ? 'linear-gradient(90deg, #10b981, #34d399)' : npsPct >= 25 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f97316)',
+                }} />
               </div>
             </div>
           </MetricSummaryCard>
-          )}
+            );
+          })()}
 
           {/* 7. On-Time Billing (Timeliness) */}
           <MetricSummaryCard title="Billing Timeliness" value={`${(billingTimeliness.score * 100).toFixed(0)}%`}

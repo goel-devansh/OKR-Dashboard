@@ -95,12 +95,17 @@ function parseExcelData(filePath) {
         const label = String(row[0]).trim();
         const key = metricKeyMap[label];
         if (key) {
-          data.annualMetrics[key] = {
+          const metric = {
             label: label,
             targetFY26: parseNum(row[1]),
             achievementTillDate: parseNum(row[2]),
             unit: unitMap[key] || '',
           };
+          // NPS has a baseline (Q1) column for improvement-based calculation
+          if (key === 'nps' && row[3] !== '' && row[3] !== undefined && row[3] !== null) {
+            metric.baseline = parseNum(row[3]);
+          }
+          data.annualMetrics[key] = metric;
         }
         // Parse Open Pipeline value
         if (label.toLowerCase().includes('pipeline')) {
