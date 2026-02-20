@@ -45,7 +45,18 @@
       "Bash(xcopy:*)",
       "Bash(robocopy:*)",
       "Bash(ollama list:*)",
-      "Bash(git status:*)"
+      "Bash(git status:*)",
+      "Bash(tasklist /FI \"IMAGENAME eq node.exe\" /FO TABLE)",
+      "Bash(ss:*)",
+      "Bash(cmd.exe /c \"netstat -aon | findstr :3001\")",
+      "Bash(cmd.exe /c \"taskkill /F /PID 23040\")",
+      "Bash(cmd.exe /c \"for /f \"\"tokens=5\"\" %a in \\(''netstat -aon ^| findstr :3001 ^| findstr LISTENING''\\) do taskkill /F /PID %a\")",
+      "Bash(cmd.exe /c \"taskkill /F /IM node.exe\")",
+      "Bash(cmd.exe /c \"netstat -aon | findstr :3001 | findstr LISTENING\")",
+      "Bash(cmd.exe /c \"netstat -aon | findstr 3001\")",
+      "WebFetch(domain:console.groq.com)",
+      "Bash(npx kill-port:*)",
+      "Bash(cd:*)"
     ]
   }
 }

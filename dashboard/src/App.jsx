@@ -2837,7 +2837,7 @@ function ChatBubble({ selectedFunction, selectedFY }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [btnBottom, setBtnBottom] = useState(24);
+  const [btnBottom, setBtnBottom] = useState(80);
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const dragStartBottom = useRef(0);
