@@ -1531,8 +1531,8 @@ const DrillDownModal = ({ section, onClose, billingTimelinessData, collectionTim
                   <XAxis dataKey="quarter" tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <YAxis tick={{ fontSize: 12, fill: '#6b7280' }} />
                   <Tooltip formatter={(v) => [Number(v).toFixed(1), '']} />
-                  <Bar dataKey="target" name="Target" fill="#fde68a" radius={[4, 4, 0, 0]} barSize={35} />
-                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35}>
+                  <Bar dataKey="target" name="Target" fill="#fde68a" radius={[4, 4, 0, 0]} barSize={35} label={{ position: 'top', fontSize: 12, fontWeight: 700, fill: '#94a3b8' }} />
+                  <Bar dataKey="achievement" name="Achievement" radius={[4, 4, 0, 0]} barSize={35} label={{ position: 'top', fontSize: 12, fontWeight: 700, fill: '#1e293b' }}>
                     {heroChartData.map((entry, i) => (
                       <Cell key={i} fill={getAchievementColor(entry.percentage)} />
                     ))}
