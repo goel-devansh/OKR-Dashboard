@@ -385,20 +385,38 @@ const MetricTile = ({ label, achievement, weight, onClick, isCoverage, isRAG, ra
 /* ================================================================
    Compact Metric Summary Card (for right grid — all metrics)
    ================================================================ */
-const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onClick, children, weight }) => {
+const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onClick, children, weight, animIndex }) => {
   const hasAchievement = achievement != null;
   const pctColor = hasAchievement ? getAchievementColor(achievement) : '#0ea5e9';
+  const isCritical = hasAchievement && achievement < 0.6;
+  const isWarning = hasAchievement && achievement >= 0.6 && achievement < 0.8;
+  const alertBorder = isCritical ? '#ef4444' : isWarning ? '#f59e0b' : '#f1f5f9';
+  const alertShadow = isCritical ? '0 1px 8px rgba(239,68,68,0.12)' : isWarning ? '0 1px 6px rgba(245,158,11,0.1)' : '0 1px 3px rgba(0,0,0,0.06)';
+  const animStyle = animIndex != null ? { animation: `cardStaggerIn 0.45s ease-out ${animIndex * 0.06}s both` } : {};
   return (
     <div className="metric-summary-card" onClick={onClick} style={{
       background: '#fff', borderRadius: 10, padding: '10px 12px', cursor: onClick ? 'pointer' : 'default',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.2s',
+      boxShadow: alertShadow, transition: 'all 0.2s',
       display: 'flex', flexDirection: 'column', height: '100%',
-      border: '1px solid #f1f5f9', position: 'relative', overflow: 'hidden',
+      border: `1px solid ${alertBorder}`, position: 'relative', overflow: 'hidden',
+      ...animStyle,
     }}
       onMouseEnter={e => { e.currentTarget.style.boxShadow = '0 4px 16px rgba(232,31,118,0.12)'; e.currentTarget.style.borderColor = '#E81F76'; }}
-      onMouseLeave={e => { e.currentTarget.style.boxShadow = '0 1px 3px rgba(0,0,0,0.06)'; e.currentTarget.style.borderColor = '#f1f5f9'; }}
+      onMouseLeave={e => { e.currentTarget.style.boxShadow = alertShadow; e.currentTarget.style.borderColor = alertBorder; }}
     >
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: color || '#E81F76' }} />
+      {isCritical && (
+        <div className="alert-pulse-dot" style={{
+          position: 'absolute', top: 6, right: 8, width: 7, height: 7, borderRadius: '50%',
+          background: '#ef4444', animation: 'alertPulse 2s infinite',
+        }} />
+      )}
+      {isWarning && (
+        <div style={{
+          position: 'absolute', top: 6, right: 8, width: 7, height: 7, borderRadius: '50%',
+          background: '#f59e0b', opacity: 0.7,
+        }} />
+      )}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 2 }}>
         <span style={{ fontSize: 10, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#64748b' }}>{title}</span>
         {hasAchievement && <span style={{
@@ -432,6 +450,7 @@ const SectionHeader = ({ label, icon, isCollapsed, onToggle, metricCount, sectio
     border: isCollapsed ? '1px solid #cbd5e1' : '1px solid #475569',
     marginBottom: 6, transition: 'all 0.2s', userSelect: 'none',
     boxShadow: isCollapsed ? 'none' : '0 2px 6px rgba(30,41,59,0.15)',
+    animation: 'fadeIn 0.4s ease-out',
   }}
     onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; }}
     onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
@@ -473,7 +492,7 @@ const SidebarSectionHeader = ({ label, isCollapsed, onToggle }) => (
   </div>
 );
 
-const RAGMetricCard = ({ label, ragValue, achievement, weight, onRAGChange }) => {
+const RAGMetricCard = ({ label, ragValue, achievement, weight, onRAGChange, animIndex }) => {
   const ragColors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
   const ragLabels = { red: 'Red', amber: 'Amber', green: 'Green' };
   const ragBg = { red: 'rgba(239,68,68,0.06)', amber: 'rgba(245,158,11,0.06)', green: 'rgba(16,185,129,0.06)' };
@@ -481,14 +500,22 @@ const RAGMetricCard = ({ label, ragValue, achievement, weight, onRAGChange }) =>
   const currentColor = ragColors[val];
   const currentLabel = ragLabels[val];
   const pctValue = achievement != null ? (achievement * 100).toFixed(0) : '0';
+  const isCritical = val === 'red';
+  const animStyle = animIndex != null ? { animation: `cardStaggerIn 0.45s ease-out ${animIndex * 0.06}s both` } : {};
 
   return (
     <div style={{
       background: ragBg[val], borderRadius: 10, padding: '10px 12px',
-      boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.3s',
-      display: 'flex', flexDirection: 'column', border: `1px solid ${currentColor}30`,
-      position: 'relative', overflow: 'hidden',
+      boxShadow: isCritical ? '0 1px 8px rgba(239,68,68,0.12)' : '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.3s',
+      display: 'flex', flexDirection: 'column', border: `1px solid ${isCritical ? '#ef4444' : currentColor + '30'}`,
+      position: 'relative', overflow: 'hidden', ...animStyle,
     }}>
+      {isCritical && (
+        <div className="alert-pulse-dot" style={{
+          position: 'absolute', top: 6, right: 8, width: 7, height: 7, borderRadius: '50%',
+          background: '#ef4444', animation: 'alertPulse 2s infinite',
+        }} />
+      )}
       <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: currentColor }} />
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 2 }}>
         <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#64748b', maxWidth: '70%' }}>{label}</span>
@@ -2158,6 +2185,30 @@ function DashboardContent() {
     return { okrScore: score, metricAchievements: raw };
   }, [annualMetrics, billingTimeliness, collectionTimeliness, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, weightages, pipelineCoverage, ragMetrics]);
 
+  /* ---------- Health Banner Stats ---------- */
+  const healthStats = useMemo(() => {
+    const activeKeys = Object.keys(weightages).filter(k => weightages[k]);
+    const total = activeKeys.length;
+    let onTrack = 0, atRisk = 0, critical = 0;
+    const criticalMetrics = [];
+    const atRiskMetrics = [];
+    const metricLabels = {
+      arr: 'ARR', serviceRev: 'Service Rev', ndr: 'NDR', gdr: 'GDR',
+      billing: 'Billing', collection: 'Collection', nps: 'NPS',
+      pipelineCoverage: 'Pipeline', qbr: 'QBRs', heroStories: 'Hero Stories',
+      newLogos: 'New Logos', salesCapacity: 'Sales Capacity',
+      capabilityAI: 'AI Capability', accountStrategy: 'Account Strategy', archDomain: 'Arch & Domain',
+    };
+    activeKeys.forEach(k => {
+      const ach = metricAchievements[k] ?? 0;
+      if (ach >= 0.8) { onTrack++; }
+      else if (ach >= 0.6) { atRisk++; atRiskMetrics.push(metricLabels[k] || k); }
+      else { critical++; criticalMetrics.push(metricLabels[k] || k); }
+    });
+    const overallStatus = critical > 0 ? 'critical' : atRisk > 0 ? 'at-risk' : 'on-track';
+    return { total, onTrack, atRisk, critical, overallStatus, criticalMetrics, atRiskMetrics };
+  }, [weightages, metricAchievements]);
+
   /* ---------- Takeaways ---------- */
   const takeaways = useMemo(() =>
     generateTakeaways(annualMetrics, billingTotals, collectionTotals, billingTimeliness.score, collectionTimeliness.score, quarterlyQBRs, quarterlyHeroStories, quarterlyNewLogos, newLogosTotals),
@@ -2342,6 +2393,64 @@ function DashboardContent() {
         </div>
       </header>
 
+      {/* ====== Health Banner ====== */}
+      {data && (() => {
+        const hs = healthStats;
+        const statusConfig = {
+          'on-track':  { bg: 'linear-gradient(90deg, #059669, #10b981)', icon: '✅', label: 'On Track', glow: 'rgba(16,185,129,0.15)' },
+          'at-risk':   { bg: 'linear-gradient(90deg, #d97706, #f59e0b)', icon: '⚠️', label: 'Needs Attention', glow: 'rgba(245,158,11,0.15)' },
+          'critical':  { bg: 'linear-gradient(90deg, #dc2626, #ef4444)', icon: '🔴', label: 'At Risk', glow: 'rgba(239,68,68,0.15)' },
+        };
+        const cfg = statusConfig[hs.overallStatus];
+        return (
+          <div className="health-banner" style={{
+            display: 'flex', alignItems: 'center', gap: 12, padding: '5px 16px',
+            background: cfg.glow, borderBottom: '1px solid rgba(0,0,0,0.04)',
+            animation: 'fadeIn 0.5s ease-out',
+          }}>
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              background: cfg.bg, padding: '3px 12px', borderRadius: 20,
+              color: '#fff', fontSize: 10, fontWeight: 800, letterSpacing: 0.5, textTransform: 'uppercase',
+              boxShadow: `0 2px 8px ${cfg.glow}`,
+            }}>
+              <span>{cfg.icon}</span>
+              <span>{cfg.label}</span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, fontSize: 10, fontWeight: 600 }}>
+              <span style={{ color: '#10b981' }}>● {hs.onTrack} On Track</span>
+              {hs.atRisk > 0 && <span style={{ color: '#f59e0b' }}>● {hs.atRisk} Warning</span>}
+              {hs.critical > 0 && <span style={{ color: '#ef4444' }}>● {hs.critical} Critical</span>}
+              <span style={{ color: '#94a3b8' }}>({hs.onTrack}/{hs.total} metrics ≥80%)</span>
+            </div>
+            {hs.criticalMetrics.length > 0 && (
+              <div style={{
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 9,
+                color: '#ef4444', fontWeight: 600,
+              }}>
+                <span>🔻 Focus:</span>
+                {hs.criticalMetrics.slice(0, 3).map((m, i) => (
+                  <span key={i} style={{ background: 'rgba(239,68,68,0.1)', padding: '1px 7px', borderRadius: 8, fontSize: 9 }}>{m}</span>
+                ))}
+                {hs.criticalMetrics.length > 3 && <span>+{hs.criticalMetrics.length - 3} more</span>}
+              </div>
+            )}
+            {hs.criticalMetrics.length === 0 && hs.atRiskMetrics.length > 0 && (
+              <div style={{
+                marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 9,
+                color: '#f59e0b', fontWeight: 600,
+              }}>
+                <span>⚡ Watch:</span>
+                {hs.atRiskMetrics.slice(0, 3).map((m, i) => (
+                  <span key={i} style={{ background: 'rgba(245,158,11,0.1)', padding: '1px 7px', borderRadius: 8, fontSize: 9 }}>{m}</span>
+                ))}
+                {hs.atRiskMetrics.length > 3 && <span>+{hs.atRiskMetrics.length - 3} more</span>}
+              </div>
+            )}
+          </div>
+        );
+      })()}
+
       {/* ====== Loading screen while switching functions / fetching data ====== */}
       {loading && !data && (
         <div style={{
@@ -2412,6 +2521,7 @@ function DashboardContent() {
           width: '24%', minWidth: 220, display: 'flex', flexDirection: 'column', gap: 6,
           background: 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)',
           borderRadius: 12, padding: 10, overflow: 'hidden',
+          animation: 'slideUp 0.5s ease-out',
         }}>
           <div className="okr-gauge-wrap" style={{ display: 'flex', justifyContent: 'center', flexShrink: 0 }}>
             <OKRScoreGauge score={okrScore} size={140} />
@@ -2450,7 +2560,7 @@ function DashboardContent() {
           flex: 1, display: 'flex', flexDirection: 'column',
           gap: 2, overflowY: 'auto', overflowX: 'hidden',
         }}>
-          {BSC_SECTIONS.map(section => {
+          {(() => { let cardIdx = 0; return BSC_SECTIONS.map(section => {
             const activeMetrics = section.metrics.filter(k => weightages[k]);
             if (activeMetrics.length === 0) return null;
             const isCollapsed = !!collapsedSections[section.key];
@@ -2466,13 +2576,13 @@ function DashboardContent() {
                   sectionWeight={sectionWeight} sectionAchieved={sectionAchievedWt} />
                 {!isCollapsed && (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 0' }}>
-                    {activeMetrics.map(mk => {
+                    {activeMetrics.map(mk => { const ci = cardIdx++;
                       /* ---- ARR ---- */
                       if (mk === 'arr' && annualMetrics?.arr) return (
                         <MetricSummaryCard key="arr" title="ARR" value={formatCrore(annualMetrics.arr.achievementTillDate, 1)}
                           target={annualMetrics.arr.targetFY26.toFixed(1)} unit="Cr"
                           achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           {(quarterlyARR || []).length > 0 && (
                             <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
@@ -2500,7 +2610,7 @@ function DashboardContent() {
                         <MetricSummaryCard key="serviceRev" title="Service Revenue" value={formatCrore(annualMetrics?.serviceRev?.achievementTillDate || 0, 0)}
                           target={annualMetrics?.serviceRev?.targetFY26 || 0} unit="Cr"
                           achievement={metricAchievements.serviceRev} color="#8b5cf6" onClick={() => openDrill('serviceRev')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           {(quarterlyServiceRev || []).length > 0 && (
                             <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
@@ -2528,7 +2638,7 @@ function DashboardContent() {
                         <MetricSummaryCard key="ndr" title="NDR" value={`${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}%`}
                           target={`${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}`} unit="%"
                           achievement={metricAchievements.ndr} color="#06b6d4" onClick={() => openDrill('ndr')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <MiniGauge value={annualMetrics.ndr.achievementTillDate} target={annualMetrics.ndr.targetFY26}
                             label="NDR" color={getAchievementColor(metricAchievements.ndr)} format="percent" />
@@ -2539,7 +2649,7 @@ function DashboardContent() {
                         <MetricSummaryCard key="gdr" title="GDR" value={`${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}%`}
                           target={`${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}`} unit="%"
                           achievement={metricAchievements.gdr} color="#14b8a6" onClick={() => openDrill('gdr')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <MiniGauge value={annualMetrics.gdr.achievementTillDate} target={annualMetrics.gdr.targetFY26}
                             label="GDR" color={getAchievementColor(metricAchievements.gdr)} format="percent" />
@@ -2549,7 +2659,7 @@ function DashboardContent() {
                       if (mk === 'billing') return (
                         <MetricSummaryCard key="billing" title="Billing Timeliness" value={`${(billingTimeliness.score * 100).toFixed(0)}%`}
                           target="100" unit="%" achievement={billingTimeliness.score} color="#6366f1" onClick={() => openDrill('billing')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -2575,7 +2685,7 @@ function DashboardContent() {
                       if (mk === 'collection') return (
                         <MetricSummaryCard key="collection" title="Collection Timeliness" value={`${(collectionTimeliness.score * 100).toFixed(0)}%`}
                           target="100" unit="%" achievement={collectionTimeliness.score} color="#06b6d4" onClick={() => openDrill('collection')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -2609,7 +2719,7 @@ function DashboardContent() {
                             target={`+${npsM.targetFY26}`} unit=""
                             achievement={metricAchievements.nps} color={npsPct >= 50 ? '#10b981' : npsPct >= 25 ? '#f59e0b' : '#ef4444'}
                             onClick={() => openDrill('nps')}
-                            weight={weightages[mk]?.weight || 0}
+                            weight={weightages[mk]?.weight || 0} animIndex={ci}
                           >
                             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 4 }}>
                               <span style={{ fontSize: 28, fontWeight: 900, color: npsM.achievementTillDate >= 0 ? '#10b981' : '#E81F76' }}>
@@ -2637,7 +2747,7 @@ function DashboardContent() {
                       if (mk === 'pipelineCoverage') return (
                         <MetricSummaryCard key="pipelineCoverage" title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
                           target="3" unit="x" achievement={null} color="#0ea5e9" onClick={() => openDrill('pipelineCoverage')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           {(() => {
                             const cov = pipelineCoverage?.coverage || 0;
@@ -2681,7 +2791,7 @@ function DashboardContent() {
                       if (mk === 'qbr') return (
                         <MetricSummaryCard key="qbr" title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
                           target={null} unit="" achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -2704,7 +2814,7 @@ function DashboardContent() {
                         <MetricSummaryCard key="heroStories" title="Hero Stories" value={`${heroTotal}/${heroTargetTotal}`}
                           target={null} unit="" achievement={heroTargetTotal > 0 ? heroTotal / heroTargetTotal : 0} color="#f97316"
                           onClick={() => openDrill('heroStories')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
                             <ResponsiveContainer width="100%" height="100%">
@@ -2726,7 +2836,7 @@ function DashboardContent() {
                       if (mk === 'newLogos') return (
                         <MetricSummaryCard key="newLogos" title="# of New Logos" value={`${nlTotal}/${nlTargetTotal}`}
                           target={null} unit="" achievement={metricAchievements.newLogos || 0} color="#f59e0b" onClick={() => openDrill('newLogos')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           {nlData.length > 0 && (
                             <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
@@ -2754,7 +2864,7 @@ function DashboardContent() {
                           value={annualMetrics.salesCapacity.achievementTillDate}
                           target={annualMetrics.salesCapacity.targetFY26} unit=""
                           achievement={metricAchievements.salesCapacity || 0} color="#6366f1" onClick={() => openDrill('salesCapacity')}
-                          weight={weightages[mk]?.weight || 0}
+                          weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           <MiniGauge value={annualMetrics.salesCapacity.achievementTillDate / (annualMetrics.salesCapacity.targetFY26 || 1)}
                             target={1} label="Capacity" color={getAchievementColor(metricAchievements.salesCapacity || 0)} format="percent" />
@@ -2764,7 +2874,7 @@ function DashboardContent() {
                       if (mk === 'capabilityAI' || mk === 'accountStrategy' || mk === 'archDomain') return (
                         <RAGMetricCard key={mk} label={metricTileConfig[mk].label}
                           ragValue={ragMetrics?.[mk] || 'red'} achievement={metricAchievements[mk]}
-                          weight={weightages[mk]?.weight || 0} onRAGChange={(val) => updateRAG(mk, val)} />
+                          weight={weightages[mk]?.weight || 0} onRAGChange={(val) => updateRAG(mk, val)} animIndex={ci} />
                       );
                       return null;
                     })}
@@ -2772,7 +2882,7 @@ function DashboardContent() {
                 )}
               </div>
             );
-          })}
+          }); })()}
         </div>
       </div>
       )}
