@@ -1897,6 +1897,7 @@ function DashboardContent() {
   const [showTakeaways, setShowTakeaways] = useState(false);
   const [showScorecard, setShowScorecard] = useState(false);
   const [showBalancedImg, setShowBalancedImg] = useState(false);
+  const [showMoreMetrics, setShowMoreMetrics] = useState(false);
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
 
@@ -2065,6 +2066,10 @@ function DashboardContent() {
   const qbrTargetTotal = quarterlyQBRs.reduce((s, q) => s + q.target, 0);
   const heroTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.achievement, 0);
   const heroTargetTotal = (quarterlyHeroStories || []).reduce((s, q) => s + q.target, 0);
+  const heroCombined = (quarterlyHeroStories || []).map(q => ({
+    q: q.quarter.replace(/FY\d+/, '').trim(),
+    hero: q.achievement, heroTarget: q.target, percentage: q.percentage,
+  }));
   // New Logos helpers
   const nlData = (quarterlyNewLogos || []).map(q => ({
     q: q.quarter.replace(/FY\d+/, '').trim(),
@@ -2269,6 +2274,7 @@ function DashboardContent() {
         </div>
 
         {/* ---- Right Area: 3x3 grid showing ALL metrics at a glance ---- */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div className="dashboard-metrics-grid" style={{
           flex: 1, display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
@@ -2516,7 +2522,8 @@ function DashboardContent() {
             </div>
           </MetricSummaryCard>
 
-          {/* 9. QBRs Held */}
+          {/* 9. QBRs Held — SALES only */}
+          {selectedFunction === 'SALES' && (
           <MetricSummaryCard title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
             target={null} unit=""
             achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
@@ -2538,6 +2545,44 @@ function DashboardContent() {
               <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
             </div>
           </MetricSummaryCard>
+          )}
+
+          {/* 9-KAM. RAG Metrics — KAM only (replaces QBRs slot) */}
+          {selectedFunction !== 'SALES' && (weightages.capabilityAI || weightages.accountStrategy || weightages.archDomain) && (
+          <div style={{
+            background: '#fff', borderRadius: 12, padding: 14,
+            border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column',
+          }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>Qualitative Metrics (RAG)</div>
+            {[
+              { key: 'capabilityAI', label: 'Capability Development in AI' },
+              { key: 'accountStrategy', label: 'Published Account Strategy' },
+              { key: 'archDomain', label: 'Architecture & Domain Knowledge' },
+            ].filter(m => weightages[m.key]).map(m => {
+              const val = ragMetrics?.[m.key] || 'red';
+              const colors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
+              const labels = { red: 'Red', amber: 'Amber', green: 'Green' };
+              return (
+                <div key={m.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
+                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{m.label}</span>
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    {Object.entries(labels).map(([v, lbl]) => (
+                      <button key={v} onClick={() => updateRAG(m.key, v)} style={{
+                        padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
+                        border: `1.5px solid ${colors[v]}`, cursor: 'pointer', transition: 'all 0.2s',
+                        background: val === v ? colors[v] : 'transparent',
+                        color: val === v ? '#fff' : colors[v],
+                      }}>{lbl}</button>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+            <div style={{ marginTop: 'auto', paddingTop: 8, fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
+              Wt: {(weightages.capabilityAI?.weight || 0) + (weightages.accountStrategy?.weight || 0) + (weightages.archDomain?.weight || 0)}% combined
+            </div>
+          </div>
+          )}
 
           {/* New Logos card (Sales) */}
           {weightages.newLogos && (
@@ -2624,6 +2669,25 @@ function DashboardContent() {
 
           {/* Grid cards rendered above — count varies by function */}
         </div>
+
+        {/* More Metrics button — KAM only */}
+        {selectedFunction !== 'SALES' && (
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 6 }}>
+            <button onClick={() => setShowMoreMetrics(true)} style={{
+              padding: '5px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
+              background: 'linear-gradient(135deg, #ec4899, #f43f5e)', color: '#fff',
+              fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6,
+              boxShadow: '0 2px 8px rgba(236,72,153,0.25)', transition: 'all 0.2s',
+            }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(236,72,153,0.35)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(236,72,153,0.25)'; }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              More Metrics
+            </button>
+          </div>
+        )}
+        </div>
       </div>
       )}
 
@@ -2682,6 +2746,79 @@ function DashboardContent() {
               alt={`${selectedFunction || 'KAM'} Balanced Scorecard`}
               style={{ width: '100%', height: 'auto', borderRadius: 8, display: 'block' }}
             />
+          </div>
+        </div>
+      )}
+
+      {/* More Metrics Modal — KAM only (QBRs + Hero Stories) */}
+      {showMoreMetrics && (
+        <div onClick={() => setShowMoreMetrics(false)} style={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 9999, animation: 'fadeIn 0.2s ease',
+        }}>
+          <div onClick={e => e.stopPropagation()} style={{
+            background: '#fff', borderRadius: 16, padding: 24,
+            width: '90vw', maxWidth: 820, maxHeight: '80vh', overflowY: 'auto',
+            position: 'relative', animation: 'slideUp 0.3s ease',
+            boxShadow: '0 24px 48px rgba(0,0,0,0.25)',
+          }}>
+            <button onClick={() => setShowMoreMetrics(false)} style={{
+              position: 'absolute', top: 12, right: 12, width: 34, height: 34, borderRadius: 8,
+              border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', zIndex: 1,
+            }}>✕</button>
+            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e', marginBottom: 16 }}>More Metrics</h3>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
+              {/* QBRs Held */}
+              <MetricSummaryCard title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
+                target={null} unit=""
+                achievement={metricAchievements.qbr} color="#8b5cf6"
+                onClick={() => { setShowMoreMetrics(false); openDrill('qbr'); }}
+              >
+                <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                        formatter={(v, name) => [Number(v).toFixed(1), name === 'qbrTarget' ? 'Target' : 'QBRs']}
+                        labelFormatter={(l) => l}
+                      />
+                      <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
+                      <Bar dataKey="qbr" fill="#8b5cf6" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#8b5cf6" />} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
+                </div>
+              </MetricSummaryCard>
+
+              {/* Hero Stories */}
+              <MetricSummaryCard title="Hero Stories" value={`${heroTotal}/${heroTargetTotal}`}
+                target={null} unit=""
+                achievement={heroTargetTotal > 0 ? heroTotal / heroTargetTotal : 0} color="#f97316"
+                onClick={() => { setShowMoreMetrics(false); openDrill('heroStories'); }}
+              >
+                <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={heroCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                      <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                      <Tooltip
+                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                        formatter={(v, name) => [Number(v).toFixed(1), name === 'heroTarget' ? 'Target' : 'Hero Stories']}
+                        labelFormatter={(l) => l}
+                      />
+                      <Bar dataKey="heroTarget" fill="#fed7aa" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#c2956a" />} />
+                      <Bar dataKey="hero" fill="#f97316" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f97316" />} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                  <MiniLegend items={[{ color: '#fed7aa', label: 'Target' }, { color: '#f97316', label: 'Done' }]} />
+                </div>
+              </MetricSummaryCard>
+            </div>
           </div>
         </div>
       )}
