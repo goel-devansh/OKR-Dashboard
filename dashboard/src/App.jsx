@@ -385,7 +385,7 @@ const MetricTile = ({ label, achievement, weight, onClick, isCoverage, isRAG, ra
 /* ================================================================
    Compact Metric Summary Card (for right grid — all metrics)
    ================================================================ */
-const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onClick, children }) => {
+const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onClick, children, weight }) => {
   const hasAchievement = achievement != null;
   const pctColor = hasAchievement ? getAchievementColor(achievement) : '#0ea5e9';
   return (
@@ -411,6 +411,112 @@ const MetricSummaryCard = ({ title, value, target, unit, achievement, color, onC
         {target != null && <span style={{ fontSize: 9, color: '#94a3b8' }}>/ {target} {unit}</span>}
       </div>
       {children && <div className="metric-chart-area" style={{ flex: 1, minHeight: 80 }}>{children}</div>}
+      {weight != null && (
+        <div style={{ textAlign: 'right', fontSize: 8, color: '#94a3b8', fontWeight: 600, marginTop: 2 }}>Wt: {weight}%</div>
+      )}
+    </div>
+  );
+};
+
+/* ================================================================
+   BSC Section Headers (collapsible)
+   ================================================================ */
+const SectionHeader = ({ label, icon, isCollapsed, onToggle, metricCount, sectionWeight, sectionAchieved }) => {
+  const achPct = sectionWeight > 0 ? (sectionAchieved / sectionWeight) * 100 : 0;
+  const achColor = achPct >= 100 ? '#10b981' : achPct >= 80 ? '#f59e0b' : '#ef4444';
+  return (
+  <div onClick={onToggle} style={{
+    display: 'flex', alignItems: 'center', gap: 10,
+    padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
+    background: isCollapsed ? 'linear-gradient(135deg, #e2e8f0, #cbd5e1)' : 'linear-gradient(135deg, #1e293b, #334155)',
+    border: isCollapsed ? '1px solid #cbd5e1' : '1px solid #475569',
+    marginBottom: 6, transition: 'all 0.2s', userSelect: 'none',
+    boxShadow: isCollapsed ? 'none' : '0 2px 6px rgba(30,41,59,0.15)',
+  }}
+    onMouseEnter={e => { e.currentTarget.style.opacity = '0.9'; }}
+    onMouseLeave={e => { e.currentTarget.style.opacity = '1'; }}
+  >
+    <span style={{ fontSize: 15 }}>{icon}</span>
+    <span style={{ fontSize: 13, fontWeight: 800, color: isCollapsed ? '#1e293b' : '#fff', flex: 1, letterSpacing: 0.3 }}>{label}</span>
+    {sectionWeight != null && (
+      <span style={{
+        fontSize: 10, fontWeight: 700,
+        color: isCollapsed ? achColor : achColor,
+        background: isCollapsed ? `${achColor}15` : `${achColor}20`,
+        padding: '2px 8px', borderRadius: 10,
+      }}>{(sectionAchieved || 0).toFixed(1)} / {sectionWeight}%</span>
+    )}
+    <span style={{ fontSize: 10, color: isCollapsed ? '#94a3b8' : '#64748b', fontWeight: 600 }}>{metricCount}</span>
+    <span style={{
+      fontSize: 10, color: isCollapsed ? '#64748b' : '#94a3b8', transition: 'transform 0.25s',
+      transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', lineHeight: 1,
+    }}>▼</span>
+  </div>
+  );
+};
+
+const SidebarSectionHeader = ({ label, isCollapsed, onToggle }) => (
+  <div onClick={onToggle} style={{
+    display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+    padding: '4px 10px', borderRadius: 6, cursor: 'pointer',
+    background: isCollapsed ? 'rgba(232, 31, 118, 0.15)' : 'rgba(232, 31, 118, 0.08)',
+    marginBottom: 3, marginTop: 6, userSelect: 'none', transition: 'all 0.2s',
+  }}
+    onMouseEnter={e => { e.currentTarget.style.background = 'rgba(232, 31, 118, 0.18)'; }}
+    onMouseLeave={e => { e.currentTarget.style.background = isCollapsed ? 'rgba(232, 31, 118, 0.15)' : 'rgba(232, 31, 118, 0.08)'; }}
+  >
+    <span style={{ fontSize: 9, fontWeight: 700, color: '#E81F76', textTransform: 'uppercase', letterSpacing: 0.8 }}>{label}</span>
+    <span style={{
+      fontSize: 9, color: '#94a3b8', transition: 'transform 0.25s',
+      transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)', lineHeight: 1,
+    }}>▼</span>
+  </div>
+);
+
+const RAGMetricCard = ({ label, ragValue, achievement, weight, onRAGChange }) => {
+  const ragColors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
+  const ragLabels = { red: 'Red', amber: 'Amber', green: 'Green' };
+  const ragBg = { red: 'rgba(239,68,68,0.06)', amber: 'rgba(245,158,11,0.06)', green: 'rgba(16,185,129,0.06)' };
+  const val = ragValue || 'red';
+  const currentColor = ragColors[val];
+  const currentLabel = ragLabels[val];
+  const pctValue = achievement != null ? (achievement * 100).toFixed(0) : '0';
+
+  return (
+    <div style={{
+      background: ragBg[val], borderRadius: 10, padding: '10px 12px',
+      boxShadow: '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.3s',
+      display: 'flex', flexDirection: 'column', border: `1px solid ${currentColor}30`,
+      position: 'relative', overflow: 'hidden',
+    }}>
+      <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 3, background: currentColor }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4, marginTop: 2 }}>
+        <span style={{ fontSize: 9, fontWeight: 700, textTransform: 'uppercase', letterSpacing: 0.5, color: '#64748b', maxWidth: '70%' }}>{label}</span>
+        <span style={{
+          fontSize: 10, fontWeight: 700, color: currentColor,
+          background: `${currentColor}18`, padding: '1px 6px', borderRadius: 10,
+        }}>{pctValue}%</span>
+      </div>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
+        <div style={{
+          width: 52, height: 52, borderRadius: '50%', background: currentColor,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: `0 4px 16px ${currentColor}40`, transition: 'all 0.3s',
+        }}>
+          <span style={{ fontSize: 13, fontWeight: 900, color: '#fff' }}>{currentLabel}</span>
+        </div>
+        <div style={{ display: 'flex', gap: 5 }}>
+          {Object.entries(ragLabels).map(([v, lbl]) => (
+            <button key={v} onClick={() => onRAGChange(v)} style={{
+              padding: '2px 9px', borderRadius: 12, fontSize: 9, fontWeight: 700,
+              border: `1.5px solid ${ragColors[v]}`, cursor: 'pointer', transition: 'all 0.2s',
+              background: val === v ? ragColors[v] : 'transparent',
+              color: val === v ? '#fff' : ragColors[v],
+            }}>{lbl}</button>
+          ))}
+        </div>
+      </div>
+      <div style={{ fontSize: 8, color: '#94a3b8', textAlign: 'center' }}>Wt: {weight}%</div>
     </div>
   );
 };
@@ -687,6 +793,19 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
 
   const totalWeight = rows.reduce((s, r) => s + (weightages[r.key]?.weight || 0), 0);
 
+  // BSC section groupings for the scorecard table
+  const scorecardSections = selectedFunction === 'SALES' ? [
+    { label: 'Financial', icon: '💰', metrics: ['arr', 'billing', 'collection', 'newLogos'] },
+    { label: 'Customer', icon: '🤝', metrics: ['nps'] },
+    { label: 'Internal Process', icon: '⚙️', metrics: ['pipelineCoverage', 'accountStrategy', 'qbr', 'salesCapacity'] },
+    { label: 'Learning & Growth', icon: '📚', metrics: ['capabilityAI', 'archDomain'] },
+  ] : [
+    { label: 'Financial', icon: '💰', metrics: ['arr', 'serviceRev', 'ndr', 'gdr', 'billing', 'collection'] },
+    { label: 'Customer', icon: '🤝', metrics: ['nps'] },
+    { label: 'Internal Process', icon: '⚙️', metrics: ['pipelineCoverage', 'accountStrategy', 'qbr', 'heroStories'] },
+    { label: 'Learning & Growth', icon: '📚', metrics: ['capabilityAI', 'archDomain'] },
+  ];
+
   const scorecardRef = React.useRef(null);
   const [scorecardExporting, setScorecardExporting] = React.useState(false);
 
@@ -811,76 +930,94 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
               </tr>
             </thead>
             <tbody>
-              {rows.map((r, i) => {
-                const weight = weightages[r.key]?.weight || 0;
-                // Pipeline coverage: displayed as Nx ratio, not a 0-1 fraction
-                if (r.isCoverage) {
-                  const covPct = r.pct || 0; // already coverage/3 (fraction of 3x benchmark)
-                  const covColor = covPct >= 1 ? '#10b981' : covPct >= 0.33 ? '#f59e0b' : '#ef4444';
-                  const weightedScore = Math.min(covPct, 1.0) * weight;
-                  return (
-                    <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 10px', borderRadius: 12,
-                          background: `${covColor}18`, color: covColor, fontWeight: 700, fontSize: 12,
-                        }}>{(covPct * 100).toFixed(0)}%</span>
-                      </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
-                    </tr>
-                  );
-                }
-                // RAG metrics: display colored badge
-                if (r.isRAG) {
-                  const ragColors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
-                  const ragLabels = { red: 'Red', amber: 'Amber', green: 'Green' };
-                  const ragVal = r.achievement || 'red';
-                  const ragColor = ragColors[ragVal] || ragColors.red;
-                  const ragScore = r.pct || 0;
-                  const weightedScore = Math.min(Math.max(ragScore, 0), 1.0) * weight;
-                  return (
-                    <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
-                      <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 10px', borderRadius: 12,
-                          background: `${ragColor}18`, color: ragColor, fontWeight: 700, fontSize: 12,
-                        }}>{ragLabels[ragVal] || 'Red'}</span>
-                      </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                        <span style={{
-                          display: 'inline-block', padding: '2px 10px', borderRadius: 12,
-                          background: `${ragColor}18`, color: ragColor, fontWeight: 700, fontSize: 12,
-                        }}>{(ragScore * 100).toFixed(0)}%</span>
-                      </td>
-                      <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
-                    </tr>
-                  );
-                }
-                const cappedPct = Math.min(Math.max(r.pct, 0), 1.0);
-                const weightedScore = cappedPct * weight;
-                const achPctVal = r.pct * 100;
-                const achColor = achPctVal >= 90 ? '#10b981' : achPctVal >= 70 ? '#f59e0b' : '#ef4444';
+              {scorecardSections.map(section => {
+                const sectionRows = section.metrics
+                  .filter(k => weightages[k] && allRowDefs[k])
+                  .map(k => ({ key: k, ...allRowDefs[k] }));
+                if (sectionRows.length === 0) return null;
+                const secWeight = sectionRows.reduce((s, r) => s + (weightages[r.key]?.weight || 0), 0);
+                const secAchieved = sectionRows.reduce((s, r) => {
+                  const ach = Math.min(r.pct || 0, 1);
+                  return s + ach * (weightages[r.key]?.weight || 0);
+                }, 0);
+                const secAchPct = secWeight > 0 ? (secAchieved / secWeight) * 100 : 0;
+                const secColor = secAchPct >= 90 ? '#10b981' : secAchPct >= 70 ? '#f59e0b' : '#ef4444';
                 return (
-                  <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
-                    <td style={{ padding: '10px 14px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center' }}>
-                      <span style={{
-                        display: 'inline-block', padding: '2px 10px', borderRadius: 12,
-                        background: `${achColor}18`, color: achColor, fontWeight: 700, fontSize: 12,
-                      }}>{achPctVal.toFixed(0)}%</span>
-                    </td>
-                    <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
-                  </tr>
+                  <React.Fragment key={section.label}>
+                    {/* Section header row */}
+                    <tr style={{ background: 'linear-gradient(135deg, #334155, #475569)' }}>
+                      <td colSpan={4} style={{ padding: '8px 14px', fontWeight: 800, fontSize: 13, color: '#fff' }}>
+                        {section.icon} {section.label}
+                      </td>
+                      <td style={{ padding: '8px 14px', textAlign: 'center' }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: secColor, background: `${secColor}20`, padding: '2px 8px', borderRadius: 10 }}>
+                          {secAchPct.toFixed(0)}%
+                        </span>
+                      </td>
+                      <td style={{ padding: '8px 14px', textAlign: 'center', fontWeight: 700, fontSize: 12, color: '#E81F76' }}>
+                        {secAchieved.toFixed(1)} / {secWeight}%
+                      </td>
+                    </tr>
+                    {/* Metric rows in this section */}
+                    {sectionRows.map((r, i) => {
+                      const weight = weightages[r.key]?.weight || 0;
+                      if (r.isCoverage) {
+                        const covPct = r.pct || 0;
+                        const covColor = covPct >= 1 ? '#10b981' : covPct >= 0.33 ? '#f59e0b' : '#ef4444';
+                        const weightedScore = Math.min(covPct, 1.0) * weight;
+                        return (
+                          <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '10px 14px 10px 28px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, background: `${covColor}18`, color: covColor, fontWeight: 700, fontSize: 12 }}>{(covPct * 100).toFixed(0)}%</span>
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
+                          </tr>
+                        );
+                      }
+                      if (r.isRAG) {
+                        const ragColors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
+                        const ragLabels = { red: 'Red', amber: 'Amber', green: 'Green' };
+                        const ragVal = r.achievement || 'red';
+                        const ragColor = ragColors[ragVal] || ragColors.red;
+                        const ragScore = r.pct || 0;
+                        const weightedScore = Math.min(Math.max(ragScore, 0), 1.0) * weight;
+                        return (
+                          <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                            <td style={{ padding: '10px 14px 10px 28px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, background: `${ragColor}18`, color: ragColor, fontWeight: 700, fontSize: 12 }}>{ragLabels[ragVal] || 'Red'}</span>
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                              <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, background: `${ragColor}18`, color: ragColor, fontWeight: 700, fontSize: 12 }}>{(ragScore * 100).toFixed(0)}%</span>
+                            </td>
+                            <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
+                          </tr>
+                        );
+                      }
+                      const cappedPct = Math.min(Math.max(r.pct, 0), 1.0);
+                      const weightedScore = cappedPct * weight;
+                      const achPctVal = r.pct * 100;
+                      const achColor = achPctVal >= 90 ? '#10b981' : achPctVal >= 70 ? '#f59e0b' : '#ef4444';
+                      return (
+                        <tr key={r.key} style={{ background: i % 2 === 0 ? '#f8fafc' : '#fff', borderBottom: '1px solid #e2e8f0' }}>
+                          <td style={{ padding: '10px 14px 10px 28px', fontWeight: 600, color: '#1e293b' }}>{r.label}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center', color: '#64748b', fontWeight: 600 }}>{weight.toFixed(0)}%</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center', color: '#475569', fontWeight: 600 }}>{r.target}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center', color: '#1e293b', fontWeight: 700 }}>{r.achievement}</td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center' }}>
+                            <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 12, background: `${achColor}18`, color: achColor, fontWeight: 700, fontSize: 12 }}>{achPctVal.toFixed(0)}%</span>
+                          </td>
+                          <td style={{ padding: '10px 14px', textAlign: 'center', fontWeight: 700, color: '#E81F76' }}>{weightedScore.toFixed(1)}%</td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
                 );
               })}
             </tbody>
@@ -1897,7 +2034,10 @@ function DashboardContent() {
   const [showTakeaways, setShowTakeaways] = useState(false);
   const [showScorecard, setShowScorecard] = useState(false);
   const [showBalancedImg, setShowBalancedImg] = useState(false);
-  const [showMoreMetrics, setShowMoreMetrics] = useState(false);
+  const [collapsedSections, setCollapsedSections] = useState({});
+  const toggleSection = useCallback((sectionKey) => {
+    setCollapsedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
+  }, []);
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
 
@@ -2055,6 +2195,24 @@ function DashboardContent() {
       ragValue: ragMetrics?.[key] || 'red',
     }))
     .sort((a, b) => b.weight - a.weight);
+
+  /* ---------- Balanced Scorecard Section Groupings ---------- */
+  const BSC_SECTIONS = useMemo(() => {
+    if (selectedFunction === 'SALES') {
+      return [
+        { key: 'financial', label: 'Financial', icon: '💰', metrics: ['arr', 'billing', 'collection', 'newLogos'] },
+        { key: 'customer', label: 'Customer', icon: '🤝', metrics: ['nps'] },
+        { key: 'internalProcess', label: 'Internal Process', icon: '⚙️', metrics: ['pipelineCoverage', 'accountStrategy', 'qbr', 'salesCapacity'] },
+        { key: 'learningGrowth', label: 'Learning & Growth', icon: '📚', metrics: ['capabilityAI', 'archDomain'] },
+      ];
+    }
+    return [
+      { key: 'financial', label: 'Financial', icon: '💰', metrics: ['arr', 'serviceRev', 'ndr', 'gdr', 'billing', 'collection'] },
+      { key: 'customer', label: 'Customer', icon: '🤝', metrics: ['nps'] },
+      { key: 'internalProcess', label: 'Internal Process', icon: '⚙️', metrics: ['pipelineCoverage', 'accountStrategy', 'qbr', 'heroStories'] },
+      { key: 'learningGrowth', label: 'Learning & Growth', icon: '📚', metrics: ['capabilityAI', 'archDomain'] },
+    ];
+  }, [selectedFunction]);
 
   /* ---------- Helper for sparkline data ---------- */
   const qbrCombined = quarterlyQBRs.map((q, i) => ({
@@ -2262,431 +2420,359 @@ function DashboardContent() {
             textAlign: 'center', fontSize: 10, fontWeight: 700,
             color: '#E81F76', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 2,
           }}>Cumulative OKR Score</div>
-          <div className="metric-tiles-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 4, overflowY: 'auto', paddingRight: 3 }}>
-            {metricTiles.map(tile => (
-              <MetricTile key={tile.key} label={tile.label} achievement={tile.achievement}
-                weight={tile.weight} onClick={tile.drill ? () => openDrill(tile.drill) : undefined}
-                isCoverage={tile.isCoverage}
-                isRAG={tile.isRAG} ragValue={tile.ragValue}
-                onRAGChange={tile.isRAG ? (val) => updateRAG(tile.key, val) : undefined} />
-            ))}
+          <div className="metric-tiles-scroll" style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto', paddingRight: 3 }}>
+            {BSC_SECTIONS.map(section => {
+              const sectionTiles = section.metrics
+                .filter(k => weightages[k] && metricTileConfig[k])
+                .map(k => metricTiles.find(t => t.key === k))
+                .filter(Boolean);
+              if (sectionTiles.length === 0) return null;
+              const isCollapsed = !!collapsedSections[section.key];
+              return (
+                <div key={section.key}>
+                  <SidebarSectionHeader label={section.label} isCollapsed={isCollapsed}
+                    onToggle={() => toggleSection(section.key)} />
+                  {!isCollapsed && sectionTiles.map(tile => (
+                    <MetricTile key={tile.key} label={tile.label} achievement={tile.achievement}
+                      weight={tile.weight} onClick={tile.drill ? () => openDrill(tile.drill) : undefined}
+                      isCoverage={tile.isCoverage}
+                      isRAG={tile.isRAG} ragValue={tile.ragValue}
+                      onRAGChange={tile.isRAG ? (val) => updateRAG(tile.key, val) : undefined} />
+                  ))}
+                </div>
+              );
+            })}
           </div>
         </div>
 
-        {/* ---- Right Area: 3x3 grid showing ALL metrics at a glance ---- */}
-        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        {/* ---- Right Area: Sectioned metric cards grid ---- */}
         <div className="dashboard-metrics-grid" style={{
-          flex: 1, display: 'grid',
-          gridTemplateColumns: 'repeat(3, 1fr)',
-          gridAutoRows: '1fr',
-          gap: 8, overflow: 'hidden',
+          flex: 1, display: 'flex', flexDirection: 'column',
+          gap: 2, overflowY: 'auto', overflowX: 'hidden',
         }}>
-
-          {/* 1. ARR */}
-          {weightages.arr && annualMetrics?.arr && (
-          <MetricSummaryCard title="ARR" value={formatCrore(annualMetrics.arr.achievementTillDate, 1)}
-            target={annualMetrics.arr.targetFY26.toFixed(1)} unit="Cr"
-            achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
-          >
-            {(quarterlyARR || []).length > 0 && (
-              <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={quarterlyARR} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                      tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
-                    <Tooltip
-                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                      formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Actual']}
-                      labelFormatter={(l) => l}
-                    />
-                    <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
-                    <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement" label={<BarLabel fill="#6366f1" />}>
-                      {(quarterlyARR || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#6366f1', label: 'Actual' }]} />
-              </div>
-            )}
-          </MetricSummaryCard>
-          )}
-
-          {/* 2. Service Revenue (KAM only) */}
-          {weightages.serviceRev && (
-          <MetricSummaryCard title="Service Revenue" value={formatCrore(annualMetrics?.serviceRev?.achievementTillDate || 0, 0)}
-            target={annualMetrics?.serviceRev?.targetFY26 || 0} unit="Cr"
-            achievement={metricAchievements.serviceRev} color="#8b5cf6" onClick={() => openDrill('serviceRev')}
-          >
-            {(quarterlyServiceRev || []).length > 0 && (
-              <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={quarterlyServiceRev} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                      tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
-                    <Tooltip
-                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                      formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Actual']}
-                      labelFormatter={(l) => l}
-                    />
-                    <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
-                    <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement" label={<BarLabel fill="#8b5cf6" />}>
-                      {(quarterlyServiceRev || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Actual' }]} />
-              </div>
-            )}
-          </MetricSummaryCard>
-          )}
-
-          {/* 3. Pipeline Coverage — semi-circle gauge with 3x benchmark tick */}
-          <MetricSummaryCard title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
-            target="3" unit="x"
-            achievement={null} color="#0ea5e9" onClick={() => openDrill('pipelineCoverage')}
-          >
-            {(() => {
-              const cov = pipelineCoverage?.coverage || 0;
-              const pcColor = cov >= 3 ? '#10b981' : cov >= 1 ? '#f59e0b' : '#ef4444';
-              const maxScale = 5; // gauge goes from 0x to 5x
-              const pct = Math.min(cov / maxScale, 1); // clamp at 100% of arc
-              const benchmarkPct = 3 / maxScale; // 3x mark at 60% of arc
-              const size = 120;
-              const sw = 10; // stroke width
-              const r = (size - sw) / 2;
-              const halfC = Math.PI * r;
-              const offset = halfC - pct * halfC;
-              // 3x benchmark tick position on semi-circle arc
-              const bmAngle = Math.PI * (1 - benchmarkPct); // angle from right
-              const bmX = size / 2 + r * Math.cos(bmAngle);
-              const bmY = size / 2 - r * Math.sin(bmAngle);
-              // Tick marks: inner and outer points
-              const tickLen = 8;
-              const bmX1 = size / 2 + (r - tickLen) * Math.cos(bmAngle);
-              const bmY1 = size / 2 - (r - tickLen) * Math.sin(bmAngle);
-              const bmX2 = size / 2 + (r + tickLen) * Math.cos(bmAngle);
-              const bmY2 = size / 2 - (r + tickLen) * Math.sin(bmAngle);
-              // Label position (outside the arc)
-              const lblX = size / 2 + (r + 16) * Math.cos(bmAngle);
-              const lblY = size / 2 - (r + 16) * Math.sin(bmAngle);
-
-              return (
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'center' }}>
-                  <svg width={size} height={size / 2 + 18} viewBox={`0 0 ${size} ${size / 2 + 18}`}>
-                    {/* Background arc */}
-                    <path d={`M ${sw / 2} ${size / 2} A ${r} ${r} 0 0 1 ${size - sw / 2} ${size / 2}`}
-                      fill="none" stroke="#e2e8f0" strokeWidth={sw} strokeLinecap="round" />
-                    {/* Filled arc */}
-                    <path d={`M ${sw / 2} ${size / 2} A ${r} ${r} 0 0 1 ${size - sw / 2} ${size / 2}`}
-                      fill="none" stroke={pcColor} strokeWidth={sw} strokeLinecap="round"
-                      strokeDasharray={halfC} strokeDashoffset={offset}
-                      style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
-                    {/* 3x benchmark tick */}
-                    <line x1={bmX1} y1={bmY1} x2={bmX2} y2={bmY2}
-                      stroke="#0ea5e9" strokeWidth={2} strokeLinecap="round" />
-                    <text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle"
-                      fontSize="7" fontWeight="700" fill="#0ea5e9">3x</text>
-                    {/* Center value */}
-                    <text x={size / 2} y={size / 2 - 4} textAnchor="middle" dominantBaseline="auto"
-                      fontSize="22" fontWeight="800" fill={pcColor}>{cov.toFixed(1)}x</text>
-                    {/* Scale labels */}
-                    <text x={sw / 2 + 2} y={size / 2 + 14} textAnchor="start" fontSize="7" fill="#94a3b8">0x</text>
-                    <text x={size - sw / 2 - 2} y={size / 2 + 14} textAnchor="end" fontSize="7" fill="#94a3b8">5x</text>
-                  </svg>
-                  <div style={{ display: 'flex', gap: 14, marginTop: 0, fontSize: 9, color: '#64748b', fontWeight: 600 }}>
-                    <span>Pipeline: ₹{(pipelineCoverage?.openPipeline || 0).toFixed(0)} Cr</span>
-                    <span>Rem. Target: ₹{(pipelineCoverage?.remainingTarget || 0).toFixed(1)} Cr</span>
-                  </div>
-                </div>
-              );
-            })()}
-          </MetricSummaryCard>
-
-          {/* 4. NDR (KAM only) */}
-          {weightages.ndr && annualMetrics?.ndr && (
-          <MetricSummaryCard title="NDR" value={`${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}%`}
-            target={`${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}`} unit="%"
-            achievement={metricAchievements.ndr} color="#06b6d4" onClick={() => openDrill('ndr')}
-          >
-            <MiniGauge value={annualMetrics.ndr.achievementTillDate} target={annualMetrics.ndr.targetFY26}
-              label="NDR" color={getAchievementColor(metricAchievements.ndr)} format="percent" />
-          </MetricSummaryCard>
-          )}
-
-          {/* 5. GDR (KAM only) */}
-          {weightages.gdr && annualMetrics?.gdr && (
-          <MetricSummaryCard title="GDR" value={`${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}%`}
-            target={`${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}`} unit="%"
-            achievement={metricAchievements.gdr} color="#14b8a6" onClick={() => openDrill('gdr')}
-          >
-            <MiniGauge value={annualMetrics.gdr.achievementTillDate} target={annualMetrics.gdr.targetFY26}
-              label="GDR" color={getAchievementColor(metricAchievements.gdr)} format="percent" />
-          </MetricSummaryCard>
-          )}
-
-          {/* 6. NPS */}
-          {weightages.nps && annualMetrics?.nps && (() => {
-            const npsM = annualMetrics.nps;
-            const npsBaseline = npsM.baseline ?? 0;
-            const npsImprovement = npsM.achievementTillDate - npsBaseline;
-            const npsTotal = npsM.targetFY26 - npsBaseline;
-            const npsPct = npsTotal !== 0 ? Math.max(0, (npsImprovement / npsTotal) * 100) : 0;
+          {BSC_SECTIONS.map(section => {
+            const activeMetrics = section.metrics.filter(k => weightages[k]);
+            if (activeMetrics.length === 0) return null;
+            const isCollapsed = !!collapsedSections[section.key];
+            const sectionWeight = activeMetrics.reduce((s, k) => s + (weightages[k]?.weight || 0), 0);
+            const sectionAchievedWt = activeMetrics.reduce((s, k) => {
+              const ach = Math.min(metricAchievements[k] || 0, 1);
+              return s + ach * (weightages[k]?.weight || 0);
+            }, 0);
             return (
-          <MetricSummaryCard title="NPS Score" value={npsM.achievementTillDate}
-            target={`+${npsM.targetFY26}`} unit=""
-            achievement={metricAchievements.nps} color={npsPct >= 50 ? '#10b981' : npsPct >= 25 ? '#f59e0b' : '#ef4444'}
-            onClick={() => openDrill('nps')}
-          >
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 4 }}>
-              <span style={{ fontSize: 28, fontWeight: 900, color: npsM.achievementTillDate >= 0 ? '#10b981' : '#E81F76' }}>
-                {npsM.achievementTillDate}
-              </span>
-              <div style={{ display: 'flex', justifyContent: 'space-between', width: '85%', fontSize: 9, marginBottom: -1 }}>
-                <span style={{ color: '#ef4444', fontWeight: 700 }}>Q1: {npsBaseline}</span>
-                <span style={{ color: '#10b981', fontWeight: 700 }}>Target: +{npsM.targetFY26}</span>
+              <div key={section.key} style={{ marginBottom: 2 }}>
+                <SectionHeader label={section.label} icon={section.icon} isCollapsed={isCollapsed}
+                  onToggle={() => toggleSection(section.key)} metricCount={activeMetrics.length}
+                  sectionWeight={sectionWeight} sectionAchieved={sectionAchievedWt} />
+                {!isCollapsed && (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 0' }}>
+                    {activeMetrics.map(mk => {
+                      /* ---- ARR ---- */
+                      if (mk === 'arr' && annualMetrics?.arr) return (
+                        <MetricSummaryCard key="arr" title="ARR" value={formatCrore(annualMetrics.arr.achievementTillDate, 1)}
+                          target={annualMetrics.arr.targetFY26.toFixed(1)} unit="Cr"
+                          achievement={metricAchievements.arr} color="#6366f1" onClick={() => openDrill('arr')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          {(quarterlyARR || []).length > 0 && (
+                            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={quarterlyARR} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                  <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                                    tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
+                                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                    formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Actual']}
+                                    labelFormatter={(l) => l} />
+                                  <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
+                                  <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement" label={<BarLabel fill="#6366f1" />}>
+                                    {(quarterlyARR || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                              <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#6366f1', label: 'Actual' }]} />
+                            </div>
+                          )}
+                        </MetricSummaryCard>
+                      );
+                      /* ---- Service Revenue ---- */
+                      if (mk === 'serviceRev') return (
+                        <MetricSummaryCard key="serviceRev" title="Service Revenue" value={formatCrore(annualMetrics?.serviceRev?.achievementTillDate || 0, 0)}
+                          target={annualMetrics?.serviceRev?.targetFY26 || 0} unit="Cr"
+                          achievement={metricAchievements.serviceRev} color="#8b5cf6" onClick={() => openDrill('serviceRev')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          {(quarterlyServiceRev || []).length > 0 && (
+                            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={quarterlyServiceRev} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                  <XAxis dataKey="quarter" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                                    tickFormatter={(v) => v.replace(/FY\d+\s*/, '')} />
+                                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                    formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Actual']}
+                                    labelFormatter={(l) => l} />
+                                  <Bar dataKey="target" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} name="target" label={<BarLabel fill="#a5b4c8" />} />
+                                  <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} name="achievement" label={<BarLabel fill="#8b5cf6" />}>
+                                    {(quarterlyServiceRev || []).map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                              <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Actual' }]} />
+                            </div>
+                          )}
+                        </MetricSummaryCard>
+                      );
+                      /* ---- NDR ---- */
+                      if (mk === 'ndr' && annualMetrics?.ndr) return (
+                        <MetricSummaryCard key="ndr" title="NDR" value={`${(annualMetrics.ndr.achievementTillDate * 100).toFixed(0)}%`}
+                          target={`${(annualMetrics.ndr.targetFY26 * 100).toFixed(0)}`} unit="%"
+                          achievement={metricAchievements.ndr} color="#06b6d4" onClick={() => openDrill('ndr')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <MiniGauge value={annualMetrics.ndr.achievementTillDate} target={annualMetrics.ndr.targetFY26}
+                            label="NDR" color={getAchievementColor(metricAchievements.ndr)} format="percent" />
+                        </MetricSummaryCard>
+                      );
+                      /* ---- GDR ---- */
+                      if (mk === 'gdr' && annualMetrics?.gdr) return (
+                        <MetricSummaryCard key="gdr" title="GDR" value={`${(annualMetrics.gdr.achievementTillDate * 100).toFixed(0)}%`}
+                          target={`${(annualMetrics.gdr.targetFY26 * 100).toFixed(0)}`} unit="%"
+                          achievement={metricAchievements.gdr} color="#14b8a6" onClick={() => openDrill('gdr')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <MiniGauge value={annualMetrics.gdr.achievementTillDate} target={annualMetrics.gdr.targetFY26}
+                            label="GDR" color={getAchievementColor(metricAchievements.gdr)} format="percent" />
+                        </MetricSummaryCard>
+                      );
+                      /* ---- Billing Timeliness ---- */
+                      if (mk === 'billing') return (
+                        <MetricSummaryCard key="billing" title="Billing Timeliness" value={`${(billingTimeliness.score * 100).toFixed(0)}%`}
+                          target="100" unit="%" achievement={billingTimeliness.score} color="#6366f1" onClick={() => openDrill('billing')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart data={monthlyBilling.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
+                                <defs><linearGradient id="sparkBill" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} /><stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
+                                </linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                                  tickFormatter={(v) => v.substring(0, 3)} interval={1} />
+                                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                  formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Billed']}
+                                  labelFormatter={(l) => `${l}`} />
+                                <Area type="monotone" dataKey="achievement" stroke="#6366f1" strokeWidth={1.5} fill="url(#sparkBill)" dot={false} activeDot={{ r: 3, fill: '#6366f1' }} name="achievement" />
+                                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                            <MiniLegend items={[{ color: '#6366f1', label: 'Billed' }, { color: '#94a3b8', label: 'Target' }]} />
+                          </div>
+                        </MetricSummaryCard>
+                      );
+                      /* ---- Collection Timeliness ---- */
+                      if (mk === 'collection') return (
+                        <MetricSummaryCard key="collection" title="Collection Timeliness" value={`${(collectionTimeliness.score * 100).toFixed(0)}%`}
+                          target="100" unit="%" achievement={collectionTimeliness.score} color="#06b6d4" onClick={() => openDrill('collection')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <ComposedChart data={monthlyCollection.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
+                                <defs><linearGradient id="sparkColl" x1="0" y1="0" x2="0" y2="1">
+                                  <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} /><stop offset="95%" stopColor="#06b6d4" stopOpacity={0.02} />
+                                </linearGradient></defs>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
+                                  tickFormatter={(v) => v.substring(0, 3)} interval={1} />
+                                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                  formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Collected']}
+                                  labelFormatter={(l) => `${l}`} />
+                                <Area type="monotone" dataKey="achievement" stroke="#06b6d4" strokeWidth={1.5} fill="url(#sparkColl)" dot={false} activeDot={{ r: 3, fill: '#06b6d4' }} name="achievement" />
+                                <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
+                              </ComposedChart>
+                            </ResponsiveContainer>
+                            <MiniLegend items={[{ color: '#06b6d4', label: 'Collected' }, { color: '#94a3b8', label: 'Target' }]} />
+                          </div>
+                        </MetricSummaryCard>
+                      );
+                      /* ---- NPS ---- */
+                      if (mk === 'nps' && annualMetrics?.nps) {
+                        const npsM = annualMetrics.nps;
+                        const npsBaseline = npsM.baseline ?? 0;
+                        const npsImprovement = npsM.achievementTillDate - npsBaseline;
+                        const npsTotal = npsM.targetFY26 - npsBaseline;
+                        const npsPct = npsTotal !== 0 ? Math.max(0, (npsImprovement / npsTotal) * 100) : 0;
+                        return (
+                          <MetricSummaryCard key="nps" title="NPS Score" value={npsM.achievementTillDate}
+                            target={`+${npsM.targetFY26}`} unit=""
+                            achievement={metricAchievements.nps} color={npsPct >= 50 ? '#10b981' : npsPct >= 25 ? '#f59e0b' : '#ef4444'}
+                            onClick={() => openDrill('nps')}
+                            weight={weightages[mk]?.weight || 0}
+                          >
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100%', gap: 4 }}>
+                              <span style={{ fontSize: 28, fontWeight: 900, color: npsM.achievementTillDate >= 0 ? '#10b981' : '#E81F76' }}>
+                                {npsM.achievementTillDate}
+                              </span>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', width: '85%', fontSize: 9, marginBottom: -1 }}>
+                                <span style={{ color: '#ef4444', fontWeight: 700 }}>Q1: {npsBaseline}</span>
+                                <span style={{ color: '#10b981', fontWeight: 700 }}>Target: +{npsM.targetFY26}</span>
+                              </div>
+                              <div style={{ width: '85%', height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
+                                <div style={{
+                                  height: '100%', borderRadius: 3, transition: 'width 0.8s ease-out',
+                                  width: `${Math.min(100, npsPct)}%`,
+                                  background: npsPct >= 50 ? 'linear-gradient(90deg, #10b981, #34d399)' : npsPct >= 25 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f97316)',
+                                }} />
+                              </div>
+                              <div style={{ fontSize: 9, color: '#64748b', textAlign: 'center', lineHeight: 1.4 }}>
+                                Improved <strong style={{ color: '#E81F76' }}>{npsImprovement}</strong> of <strong>{npsTotal}</strong> pts needed
+                              </div>
+                            </div>
+                          </MetricSummaryCard>
+                        );
+                      }
+                      /* ---- Pipeline Coverage ---- */
+                      if (mk === 'pipelineCoverage') return (
+                        <MetricSummaryCard key="pipelineCoverage" title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
+                          target="3" unit="x" achievement={null} color="#0ea5e9" onClick={() => openDrill('pipelineCoverage')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          {(() => {
+                            const cov = pipelineCoverage?.coverage || 0;
+                            const pcColor = cov >= 3 ? '#10b981' : cov >= 1 ? '#f59e0b' : '#ef4444';
+                            const maxScale = 5; const pctG = Math.min(cov / maxScale, 1); const benchmarkPct = 3 / maxScale;
+                            const size = 120; const sw = 10; const r = (size - sw) / 2;
+                            const halfC = Math.PI * r; const offset = halfC - pctG * halfC;
+                            const bmAngle = Math.PI * (1 - benchmarkPct);
+                            const tickLen = 8;
+                            const bmX1 = size / 2 + (r - tickLen) * Math.cos(bmAngle);
+                            const bmY1 = size / 2 - (r - tickLen) * Math.sin(bmAngle);
+                            const bmX2 = size / 2 + (r + tickLen) * Math.cos(bmAngle);
+                            const bmY2 = size / 2 - (r + tickLen) * Math.sin(bmAngle);
+                            const lblX = size / 2 + (r + 16) * Math.cos(bmAngle);
+                            const lblY = size / 2 - (r + 16) * Math.sin(bmAngle);
+                            return (
+                              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: '100%', justifyContent: 'center' }}>
+                                <svg width={size} height={size / 2 + 18} viewBox={`0 0 ${size} ${size / 2 + 18}`}>
+                                  <path d={`M ${sw / 2} ${size / 2} A ${r} ${r} 0 0 1 ${size - sw / 2} ${size / 2}`}
+                                    fill="none" stroke="#e2e8f0" strokeWidth={sw} strokeLinecap="round" />
+                                  <path d={`M ${sw / 2} ${size / 2} A ${r} ${r} 0 0 1 ${size - sw / 2} ${size / 2}`}
+                                    fill="none" stroke={pcColor} strokeWidth={sw} strokeLinecap="round"
+                                    strokeDasharray={halfC} strokeDashoffset={offset}
+                                    style={{ transition: 'stroke-dashoffset 1s ease-out' }} />
+                                  <line x1={bmX1} y1={bmY1} x2={bmX2} y2={bmY2} stroke="#0ea5e9" strokeWidth={2} strokeLinecap="round" />
+                                  <text x={lblX} y={lblY} textAnchor="middle" dominantBaseline="middle" fontSize="7" fontWeight="700" fill="#0ea5e9">3x</text>
+                                  <text x={size / 2} y={size / 2 - 4} textAnchor="middle" dominantBaseline="auto" fontSize="22" fontWeight="800" fill={pcColor}>{cov.toFixed(1)}x</text>
+                                  <text x={sw / 2 + 2} y={size / 2 + 14} textAnchor="start" fontSize="7" fill="#94a3b8">0x</text>
+                                  <text x={size - sw / 2 - 2} y={size / 2 + 14} textAnchor="end" fontSize="7" fill="#94a3b8">5x</text>
+                                </svg>
+                                <div style={{ display: 'flex', gap: 14, marginTop: 0, fontSize: 9, color: '#64748b', fontWeight: 600 }}>
+                                  <span>Pipeline: ₹{(pipelineCoverage?.openPipeline || 0).toFixed(0)} Cr</span>
+                                  <span>Rem. Target: ₹{(pipelineCoverage?.remainingTarget || 0).toFixed(1)} Cr</span>
+                                </div>
+                              </div>
+                            );
+                          })()}
+                        </MetricSummaryCard>
+                      );
+                      /* ---- QBRs Held ---- */
+                      if (mk === 'qbr') return (
+                        <MetricSummaryCard key="qbr" title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
+                          target={null} unit="" achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                  formatter={(v, name) => [Number(v).toFixed(1), name === 'qbrTarget' ? 'Target' : 'QBRs']}
+                                  labelFormatter={(l) => l} />
+                                <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
+                                <Bar dataKey="qbr" fill="#8b5cf6" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#8b5cf6" />} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                            <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
+                          </div>
+                        </MetricSummaryCard>
+                      );
+                      /* ---- Hero Stories ---- */
+                      if (mk === 'heroStories') return (
+                        <MetricSummaryCard key="heroStories" title="Hero Stories" value={`${heroTotal}/${heroTargetTotal}`}
+                          target={null} unit="" achievement={heroTargetTotal > 0 ? heroTotal / heroTargetTotal : 0} color="#f97316"
+                          onClick={() => openDrill('heroStories')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={heroCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                  formatter={(v, name) => [Number(v).toFixed(1), name === 'heroTarget' ? 'Target' : 'Hero Stories']}
+                                  labelFormatter={(l) => l} />
+                                <Bar dataKey="heroTarget" fill="#fed7aa" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#c2956a" />} />
+                                <Bar dataKey="hero" fill="#f97316" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f97316" />} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                            <MiniLegend items={[{ color: '#fed7aa', label: 'Target' }, { color: '#f97316', label: 'Done' }]} />
+                          </div>
+                        </MetricSummaryCard>
+                      );
+                      /* ---- New Logos ---- */
+                      if (mk === 'newLogos') return (
+                        <MetricSummaryCard key="newLogos" title="# of New Logos" value={`${nlTotal}/${nlTargetTotal}`}
+                          target={null} unit="" achievement={metricAchievements.newLogos || 0} color="#f59e0b" onClick={() => openDrill('newLogos')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          {nlData.length > 0 && (
+                            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={nlData} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
+                                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                  <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
+                                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
+                                    formatter={(v, name) => [Number(v).toFixed(0), name === 'target' ? 'Target' : 'Acquired']}
+                                    labelFormatter={(l) => l} />
+                                  <Bar dataKey="target" fill="#fde68a" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
+                                  <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f59e0b" />}>
+                                    {nlData.map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
+                                  </Bar>
+                                </BarChart>
+                              </ResponsiveContainer>
+                              <MiniLegend items={[{ color: '#fde68a', label: 'Target' }, { color: '#f59e0b', label: 'Done' }]} />
+                            </div>
+                          )}
+                        </MetricSummaryCard>
+                      );
+                      /* ---- Sales Capacity ---- */
+                      if (mk === 'salesCapacity' && annualMetrics?.salesCapacity) return (
+                        <MetricSummaryCard key="salesCapacity" title="Sales Capacity"
+                          value={annualMetrics.salesCapacity.achievementTillDate}
+                          target={annualMetrics.salesCapacity.targetFY26} unit=""
+                          achievement={metricAchievements.salesCapacity || 0} color="#6366f1" onClick={() => openDrill('salesCapacity')}
+                          weight={weightages[mk]?.weight || 0}
+                        >
+                          <MiniGauge value={annualMetrics.salesCapacity.achievementTillDate / (annualMetrics.salesCapacity.targetFY26 || 1)}
+                            target={1} label="Capacity" color={getAchievementColor(metricAchievements.salesCapacity || 0)} format="percent" />
+                        </MetricSummaryCard>
+                      );
+                      /* ---- RAG Metrics (individual cards) ---- */
+                      if (mk === 'capabilityAI' || mk === 'accountStrategy' || mk === 'archDomain') return (
+                        <RAGMetricCard key={mk} label={metricTileConfig[mk].label}
+                          ragValue={ragMetrics?.[mk] || 'red'} achievement={metricAchievements[mk]}
+                          weight={weightages[mk]?.weight || 0} onRAGChange={(val) => updateRAG(mk, val)} />
+                      );
+                      return null;
+                    })}
+                  </div>
+                )}
               </div>
-              <div style={{ width: '85%', height: 5, background: '#e2e8f0', borderRadius: 3, overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: 3, transition: 'width 0.8s ease-out',
-                  width: `${Math.min(100, npsPct)}%`,
-                  background: npsPct >= 50 ? 'linear-gradient(90deg, #10b981, #34d399)' : npsPct >= 25 ? 'linear-gradient(90deg, #f59e0b, #fbbf24)' : 'linear-gradient(90deg, #ef4444, #f97316)',
-                }} />
-              </div>
-              <div style={{ fontSize: 9, color: '#64748b', textAlign: 'center', lineHeight: 1.4 }}>
-                Improved <strong style={{ color: '#E81F76' }}>{npsImprovement}</strong> of <strong>{npsTotal}</strong> pts needed
-              </div>
-            </div>
-          </MetricSummaryCard>
             );
-          })()}
-
-          {/* 7. On-Time Billing (Timeliness) */}
-          <MetricSummaryCard title="Billing Timeliness" value={`${(billingTimeliness.score * 100).toFixed(0)}%`}
-            target="100" unit="%"
-            achievement={billingTimeliness.score} color="#6366f1" onClick={() => openDrill('billing')}
-          >
-            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={monthlyBilling.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
-                  <defs>
-                    <linearGradient id="sparkBill" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => v.substring(0, 3)} interval={1} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Billed']}
-                    labelFormatter={(l) => `${l}`}
-                  />
-                  <Area type="monotone" dataKey="achievement" stroke="#6366f1" strokeWidth={1.5} fill="url(#sparkBill)" dot={false} activeDot={{ r: 3, fill: '#6366f1' }} name="achievement" />
-                  <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <MiniLegend items={[{ color: '#6366f1', label: 'Billed' }, { color: '#94a3b8', label: 'Target' }]} />
-            </div>
-          </MetricSummaryCard>
-
-          {/* 8. On-Time Collection (Timeliness) */}
-          <MetricSummaryCard title="Collection Timeliness" value={`${(collectionTimeliness.score * 100).toFixed(0)}%`}
-            target="100" unit="%"
-            achievement={collectionTimeliness.score} color="#06b6d4" onClick={() => openDrill('collection')}
-          >
-            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <ComposedChart data={monthlyCollection.filter(d => d.achievement !== null)} margin={{ top: 4, right: 4, bottom: 2, left: 4 }}>
-                  <defs>
-                    <linearGradient id="sparkColl" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                      <stop offset="95%" stopColor="#06b6d4" stopOpacity={0.02} />
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="month" tick={{ fontSize: 8, fill: '#94a3b8' }} axisLine={false} tickLine={false}
-                    tickFormatter={(v) => v.substring(0, 3)} interval={1} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [`${Number(v).toFixed(1)} Cr`, name === 'target' ? 'Target' : 'Collected']}
-                    labelFormatter={(l) => `${l}`}
-                  />
-                  <Area type="monotone" dataKey="achievement" stroke="#06b6d4" strokeWidth={1.5} fill="url(#sparkColl)" dot={false} activeDot={{ r: 3, fill: '#06b6d4' }} name="achievement" />
-                  <Line type="monotone" dataKey="target" stroke="#94a3b8" strokeWidth={1} strokeDasharray="3 3" dot={false} name="target" />
-                </ComposedChart>
-              </ResponsiveContainer>
-              <MiniLegend items={[{ color: '#06b6d4', label: 'Collected' }, { color: '#94a3b8', label: 'Target' }]} />
-            </div>
-          </MetricSummaryCard>
-
-          {/* 9. QBRs Held — SALES only */}
-          {selectedFunction === 'SALES' && (
-          <MetricSummaryCard title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
-            target={null} unit=""
-            achievement={metricAchievements.qbr} color="#8b5cf6" onClick={() => openDrill('qbr')}
-          >
-            <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                  <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <Tooltip
-                    contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                    formatter={(v, name) => [Number(v).toFixed(1), name === 'qbrTarget' ? 'Target' : 'QBRs']}
-                    labelFormatter={(l) => l}
-                  />
-                  <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
-                  <Bar dataKey="qbr" fill="#8b5cf6" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#8b5cf6" />} />
-                </BarChart>
-              </ResponsiveContainer>
-              <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
-            </div>
-          </MetricSummaryCard>
-          )}
-
-          {/* 9-KAM. RAG Metrics — KAM only (replaces QBRs slot) */}
-          {selectedFunction !== 'SALES' && (weightages.capabilityAI || weightages.accountStrategy || weightages.archDomain) && (
-          <div style={{
-            background: '#fff', borderRadius: 12, padding: 14,
-            border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column',
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>Qualitative Metrics (RAG)</div>
-            {[
-              { key: 'capabilityAI', label: 'Capability Development in AI' },
-              { key: 'accountStrategy', label: 'Published Account Strategy' },
-              { key: 'archDomain', label: 'Architecture & Domain Knowledge' },
-            ].filter(m => weightages[m.key]).map(m => {
-              const val = ragMetrics?.[m.key] || 'red';
-              const colors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
-              const labels = { red: 'Red', amber: 'Amber', green: 'Green' };
-              return (
-                <div key={m.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{m.label}</span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {Object.entries(labels).map(([v, lbl]) => (
-                      <button key={v} onClick={() => updateRAG(m.key, v)} style={{
-                        padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
-                        border: `1.5px solid ${colors[v]}`, cursor: 'pointer', transition: 'all 0.2s',
-                        background: val === v ? colors[v] : 'transparent',
-                        color: val === v ? '#fff' : colors[v],
-                      }}>{lbl}</button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ marginTop: 'auto', paddingTop: 8, fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
-              Wt: {(weightages.capabilityAI?.weight || 0) + (weightages.accountStrategy?.weight || 0) + (weightages.archDomain?.weight || 0)}% combined
-            </div>
-          </div>
-          )}
-
-          {/* New Logos card (Sales) */}
-          {weightages.newLogos && (
-          <MetricSummaryCard title="# of New Logos" value={`${nlTotal}/${nlTargetTotal}`}
-            target={null} unit=""
-            achievement={metricAchievements.newLogos || 0} color="#f59e0b" onClick={() => openDrill('newLogos')}
-          >
-            {nlData.length > 0 && (
-              <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={nlData} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                    <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                    <Tooltip
-                      contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                      formatter={(v, name) => [Number(v).toFixed(0), name === 'target' ? 'Target' : 'Acquired']}
-                      labelFormatter={(l) => l}
-                    />
-                    <Bar dataKey="target" fill="#fde68a" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
-                    <Bar dataKey="achievement" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f59e0b" />}>
-                      {nlData.map((e, i) => <Cell key={i} fill={getAchievementColor(e.percentage)} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-                <MiniLegend items={[{ color: '#fde68a', label: 'Target' }, { color: '#f59e0b', label: 'Done' }]} />
-              </div>
-            )}
-          </MetricSummaryCard>
-          )}
-
-          {/* Sales Capacity card (Sales) */}
-          {weightages.salesCapacity && annualMetrics?.salesCapacity && (
-          <MetricSummaryCard title="Sales Capacity"
-            value={annualMetrics.salesCapacity.achievementTillDate}
-            target={annualMetrics.salesCapacity.targetFY26} unit=""
-            achievement={metricAchievements.salesCapacity || 0} color="#6366f1" onClick={() => openDrill('salesCapacity')}
-          >
-            <MiniGauge
-              value={annualMetrics.salesCapacity.achievementTillDate / (annualMetrics.salesCapacity.targetFY26 || 1)}
-              target={1}
-              label="Capacity"
-              color={getAchievementColor(metricAchievements.salesCapacity || 0)}
-              format="percent"
-            />
-          </MetricSummaryCard>
-          )}
-
-          {/* RAG Metrics Summary Card — fills empty grid slot */}
-          {selectedFunction === 'SALES' && (weightages.capabilityAI || weightages.accountStrategy || weightages.archDomain) && (
-          <div style={{
-            background: '#fff', borderRadius: 12, padding: 14,
-            border: '1px solid #e2e8f0', display: 'flex', flexDirection: 'column',
-          }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: '#1e293b', marginBottom: 10 }}>Qualitative Metrics (RAG)</div>
-            {[
-              { key: 'capabilityAI', label: 'Capability Development in AI' },
-              { key: 'accountStrategy', label: selectedFunction === 'SALES' ? 'Account Coverage Strategy' : 'Published Account Strategy' },
-              { key: 'archDomain', label: 'Architecture & Domain Knowledge' },
-            ].filter(m => weightages[m.key]).map(m => {
-              const val = ragMetrics?.[m.key] || 'red';
-              const colors = { red: '#ef4444', amber: '#f59e0b', green: '#10b981' };
-              const labels = { red: 'Red', amber: 'Amber', green: 'Green' };
-              return (
-                <div key={m.key} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 0', borderBottom: '1px solid #f1f5f9' }}>
-                  <span style={{ fontSize: 11, fontWeight: 600, color: '#475569' }}>{m.label}</span>
-                  <div style={{ display: 'flex', gap: 4 }}>
-                    {Object.entries(labels).map(([v, lbl]) => (
-                      <button key={v} onClick={() => updateRAG(m.key, v)} style={{
-                        padding: '2px 8px', borderRadius: 10, fontSize: 10, fontWeight: 700,
-                        border: `1.5px solid ${colors[v]}`, cursor: 'pointer', transition: 'all 0.2s',
-                        background: val === v ? colors[v] : 'transparent',
-                        color: val === v ? '#fff' : colors[v],
-                      }}>{lbl}</button>
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-            <div style={{ marginTop: 'auto', paddingTop: 8, fontSize: 10, color: '#94a3b8', textAlign: 'center' }}>
-              Wt: {(weightages.capabilityAI?.weight || 0) + (weightages.accountStrategy?.weight || 0) + (weightages.archDomain?.weight || 0)}% combined
-            </div>
-          </div>
-          )}
-
-          {/* Grid cards rendered above — count varies by function */}
-        </div>
-
-        {/* More Metrics button — KAM only */}
-        {selectedFunction !== 'SALES' && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 6 }}>
-            <button onClick={() => setShowMoreMetrics(true)} style={{
-              padding: '5px 16px', borderRadius: 8, border: 'none', cursor: 'pointer',
-              background: 'linear-gradient(135deg, #ec4899, #f43f5e)', color: '#fff',
-              fontSize: 11, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 6,
-              boxShadow: '0 2px 8px rgba(236,72,153,0.25)', transition: 'all 0.2s',
-            }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-1px)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(236,72,153,0.35)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 2px 8px rgba(236,72,153,0.25)'; }}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
-              More Metrics
-            </button>
-          </div>
-        )}
+          })}
         </div>
       </div>
       )}
@@ -2750,79 +2836,6 @@ function DashboardContent() {
         </div>
       )}
 
-      {/* More Metrics Modal — KAM only (QBRs + Hero Stories) */}
-      {showMoreMetrics && (
-        <div onClick={() => setShowMoreMetrics(false)} style={{
-          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          zIndex: 9999, animation: 'fadeIn 0.2s ease',
-        }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            background: '#fff', borderRadius: 16, padding: 24,
-            width: '90vw', maxWidth: 820, maxHeight: '80vh', overflowY: 'auto',
-            position: 'relative', animation: 'slideUp 0.3s ease',
-            boxShadow: '0 24px 48px rgba(0,0,0,0.25)',
-          }}>
-            <button onClick={() => setShowMoreMetrics(false)} style={{
-              position: 'absolute', top: 12, right: 12, width: 34, height: 34, borderRadius: 8,
-              border: '1px solid #e2e8f0', background: '#fff', fontSize: 16, cursor: 'pointer',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b', zIndex: 1,
-            }}>✕</button>
-            <h3 style={{ fontSize: 18, fontWeight: 700, color: '#1a1a2e', marginBottom: 16 }}>More Metrics</h3>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 16 }}>
-              {/* QBRs Held */}
-              <MetricSummaryCard title="QBRs Held" value={`${qbrTotal}/${qbrTargetTotal}`}
-                target={null} unit=""
-                achievement={metricAchievements.qbr} color="#8b5cf6"
-                onClick={() => { setShowMoreMetrics(false); openDrill('qbr'); }}
-              >
-                <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={qbrCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                        formatter={(v, name) => [Number(v).toFixed(1), name === 'qbrTarget' ? 'Target' : 'QBRs']}
-                        labelFormatter={(l) => l}
-                      />
-                      <Bar dataKey="qbrTarget" fill="#c7d2fe" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#a5b4c8" />} />
-                      <Bar dataKey="qbr" fill="#8b5cf6" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#8b5cf6" />} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <MiniLegend items={[{ color: '#c7d2fe', label: 'Target' }, { color: '#8b5cf6', label: 'Done' }]} />
-                </div>
-              </MetricSummaryCard>
-
-              {/* Hero Stories */}
-              <MetricSummaryCard title="Hero Stories" value={`${heroTotal}/${heroTargetTotal}`}
-                target={null} unit=""
-                achievement={heroTargetTotal > 0 ? heroTotal / heroTargetTotal : 0} color="#f97316"
-                onClick={() => { setShowMoreMetrics(false); openDrill('heroStories'); }}
-              >
-                <div className="metric-chart-wrap" style={{ display: 'flex', height: '100%', gap: 2 }}>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={heroCombined} margin={{ top: 12, right: 4, bottom: 2, left: 4 }} barGap={2}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
-                      <XAxis dataKey="q" tick={{ fontSize: 9, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                      <Tooltip
-                        contentStyle={{ fontSize: 11, borderRadius: 8, border: '1px solid #e2e8f0', padding: '6px 10px' }}
-                        formatter={(v, name) => [Number(v).toFixed(1), name === 'heroTarget' ? 'Target' : 'Hero Stories']}
-                        labelFormatter={(l) => l}
-                      />
-                      <Bar dataKey="heroTarget" fill="#fed7aa" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#c2956a" />} />
-                      <Bar dataKey="hero" fill="#f97316" radius={[3, 3, 0, 0]} barSize={10} label={<BarLabel fill="#f97316" />} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                  <MiniLegend items={[{ color: '#fed7aa', label: 'Target' }, { color: '#f97316', label: 'Done' }]} />
-                </div>
-              </MetricSummaryCard>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* AI Chat Bubble */}
       <ChatBubble selectedFunction={selectedFunction} selectedFY={selectedFY} />
     </div>
@@ -2837,7 +2850,7 @@ function ChatBubble({ selectedFunction, selectedFY }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [btnBottom, setBtnBottom] = useState(80);
+  const [btnBottom, setBtnBottom] = useState(24);
   const isDragging = useRef(false);
   const dragStartY = useRef(0);
   const dragStartBottom = useRef(0);
