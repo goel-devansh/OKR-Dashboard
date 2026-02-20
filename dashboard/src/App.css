@@ -520,6 +520,12 @@
     padding: 4px 8px !important;
     font-size: 9px !important;
   }
+
+  /* BSC section grid: 3 columns (matches desktop, tighter gap) */
+  .bsc-section-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
 }
 
 /* ─── Mobile: ≤ 768px ──────────────────────────────────────── */
@@ -614,6 +620,45 @@
   .scorecard-table-wrap table th,
   .scorecard-table-wrap table td {
     padding: 7px 8px !important;
+  }
+
+  /* BSC section grid → 2 columns */
+  .bsc-section-grid {
+    grid-template-columns: repeat(2, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  /* Section headers: tighter */
+  .bsc-section-header {
+    padding: 6px 10px !important;
+    gap: 6px !important;
+  }
+
+  /* Health banner: wrap on narrow screens */
+  .health-banner {
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+    padding: 5px 10px !important;
+    justify-content: center !important;
+  }
+
+  .health-banner-actions {
+    margin-left: 0 !important;
+    justify-content: center !important;
+    width: 100% !important;
+  }
+
+  /* Modals: tighter padding */
+  .takeaways-modal-content,
+  .scorecard-modal-content {
+    padding: 16px !important;
+    width: 96vw !important;
+    max-height: 92vh !important;
+  }
+
+  /* Chat window: smaller border-radius */
+  .fx-chat-window {
+    border-radius: 16px !important;
   }
 }
 
@@ -713,6 +758,69 @@
     padding: 6px 5px !important;
     white-space: nowrap;
   }
+
+  /* BSC section grid → 1 column */
+  .bsc-section-grid {
+    grid-template-columns: 1fr !important;
+    gap: 6px !important;
+  }
+
+  /* Section headers: compact */
+  .bsc-section-header {
+    padding: 5px 8px !important;
+    gap: 4px !important;
+  }
+
+  /* Health banner: very compact */
+  .health-banner {
+    gap: 4px !important;
+    padding: 4px 8px !important;
+  }
+
+  /* RAG cards: smaller circles and buttons */
+  .rag-circle {
+    width: 40px !important;
+    height: 40px !important;
+  }
+
+  .rag-circle span {
+    font-size: 11px !important;
+  }
+
+  .rag-metric-card button {
+    padding: 2px 6px !important;
+    font-size: 8px !important;
+  }
+
+  /* Chat bubble: smaller */
+  .fx-chat-bubble-btn {
+    width: 46px !important;
+    height: 46px !important;
+  }
+
+  .fx-chat-bubble-btn svg {
+    width: 20px !important;
+    height: 20px !important;
+  }
+
+  /* OKR gauge: smaller */
+  .dashboard-sidebar .okr-gauge-wrap svg {
+    width: 90px;
+    height: 90px;
+  }
+
+  /* All modals: tighter padding */
+  .drill-modal-content,
+  .takeaways-modal-content,
+  .scorecard-modal-content {
+    padding: 14px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Chart areas: adjusted for single-column */
+  .metric-chart-area {
+    min-height: 100px !important;
+  }
 }
 
 /* ─── Very small phone: ≤ 360px ──────────────────────────── */
@@ -742,5 +850,35 @@
   .header-left select {
     font-size: 10px !important;
     padding: 2px 4px !important;
+  }
+
+  /* BSC section grid: 1 column, tightest gap */
+  .bsc-section-grid {
+    grid-template-columns: 1fr !important;
+    gap: 4px !important;
+  }
+
+  /* RAG circles: smallest */
+  .rag-circle {
+    width: 36px !important;
+    height: 36px !important;
+  }
+
+  .rag-circle span {
+    font-size: 10px !important;
+  }
+
+  /* OKR gauge: smallest */
+  .dashboard-sidebar .okr-gauge-wrap svg {
+    width: 80px;
+    height: 80px;
+  }
+
+  /* All modals: tightest padding */
+  .drill-modal-content,
+  .takeaways-modal-content,
+  .scorecard-modal-content {
+    padding: 12px !important;
+    border-radius: 10px !important;
   }
 }

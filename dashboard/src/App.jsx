@@ -443,7 +443,7 @@ const SectionHeader = ({ label, icon, isCollapsed, onToggle, metricCount, sectio
   const achPct = sectionWeight > 0 ? (sectionAchieved / sectionWeight) * 100 : 0;
   const achColor = achPct >= 100 ? '#10b981' : achPct >= 80 ? '#f59e0b' : '#ef4444';
   return (
-  <div onClick={onToggle} style={{
+  <div className="bsc-section-header" onClick={onToggle} style={{
     display: 'flex', alignItems: 'center', gap: 10,
     padding: '8px 14px', borderRadius: 8, cursor: 'pointer',
     background: isCollapsed ? 'linear-gradient(135deg, #e2e8f0, #cbd5e1)' : 'linear-gradient(135deg, #1e293b, #334155)',
@@ -504,7 +504,7 @@ const RAGMetricCard = ({ label, ragValue, achievement, weight, onRAGChange, anim
   const animStyle = animIndex != null ? { animation: `cardStaggerIn 0.45s ease-out ${animIndex * 0.06}s both` } : {};
 
   return (
-    <div style={{
+    <div className="rag-metric-card" style={{
       background: ragBg[val], borderRadius: 10, padding: '10px 12px',
       boxShadow: isCritical ? '0 1px 8px rgba(239,68,68,0.12)' : '0 1px 3px rgba(0,0,0,0.06)', transition: 'all 0.3s',
       display: 'flex', flexDirection: 'column', border: `1px solid ${isCritical ? '#ef4444' : currentColor + '30'}`,
@@ -525,7 +525,7 @@ const RAGMetricCard = ({ label, ragValue, achievement, weight, onRAGChange, anim
         }}>{pctValue}%</span>
       </div>
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '8px 0' }}>
-        <div style={{
+        <div className="rag-circle" style={{
           width: 52, height: 52, borderRadius: '50%', background: currentColor,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
           boxShadow: `0 4px 16px ${currentColor}40`, transition: 'all 0.3s',
@@ -734,7 +734,7 @@ const KeyTakeawaysModal = ({ takeaways, onClose }) => {
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999, animation: 'fadeIn 0.2s ease',
     }}>
-      <div onClick={e => e.stopPropagation()} style={{
+      <div className="takeaways-modal-content" onClick={e => e.stopPropagation()} style={{
         background: '#fff', borderRadius: 16, padding: 28,
         width: '90vw', maxWidth: 700, maxHeight: '85vh', overflowY: 'auto',
         position: 'relative', animation: 'slideUp 0.3s ease',
@@ -915,7 +915,7 @@ const BalancedScorecardModal = ({ onClose, annualMetrics, billingTotals, collect
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       zIndex: 9999, animation: 'fadeIn 0.2s ease',
     }}>
-      <div onClick={e => e.stopPropagation()} ref={scorecardRef} style={{
+      <div className="scorecard-modal-content" onClick={e => e.stopPropagation()} ref={scorecardRef} style={{
         background: '#fff', borderRadius: 16, padding: 28,
         width: '94vw', maxWidth: 900, maxHeight: '90vh', overflowY: 'auto',
         position: 'relative', animation: 'slideUp 0.3s ease',
@@ -2424,7 +2424,7 @@ function DashboardContent() {
               <span style={{ color: '#94a3b8' }}>({hs.onTrack}/{hs.total} metrics ≥80%)</span>
             </div>
             {hs.criticalMetrics.length > 0 && (
-              <div style={{
+              <div className="health-banner-actions" style={{
                 marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 9,
                 color: '#ef4444', fontWeight: 600,
               }}>
@@ -2436,7 +2436,7 @@ function DashboardContent() {
               </div>
             )}
             {hs.criticalMetrics.length === 0 && hs.atRiskMetrics.length > 0 && (
-              <div style={{
+              <div className="health-banner-actions" style={{
                 marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 4, fontSize: 9,
                 color: '#f59e0b', fontWeight: 600,
               }}>
@@ -2575,7 +2575,7 @@ function DashboardContent() {
                   onToggle={() => toggleSection(section.key)} metricCount={activeMetrics.length}
                   sectionWeight={sectionWeight} sectionAchieved={sectionAchievedWt} />
                 {!isCollapsed && (
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 0' }}>
+                  <div className="bsc-section-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8, padding: '4px 0' }}>
                     {activeMetrics.map(mk => { const ci = cardIdx++;
                       /* ---- ARR ---- */
                       if (mk === 'arr' && annualMetrics?.arr) return (
@@ -3236,8 +3236,8 @@ function ChatBubble({ selectedFunction, selectedFY }) {
       {/* ── Chat Window ── */}
       {isOpen && (
         <div className="fx-chat-window" style={{
-          position: 'fixed', bottom: Math.min(btnBottom + 66, window.innerHeight - 530), right: 24, zIndex: 10000,
-          width: 400, height: 520, borderRadius: 20,
+          position: 'fixed', bottom: 16, right: 16, zIndex: 10000,
+          width: 'min(400px, calc(100vw - 32px))', height: 'min(520px, calc(100vh - 120px))', borderRadius: 20,
           background: '#0f0f1a',
           border: '1px solid rgba(232,31,118,0.2)',
           boxShadow: '0 20px 60px rgba(0,0,0,0.4), 0 0 30px rgba(232,31,118,0.08)',
