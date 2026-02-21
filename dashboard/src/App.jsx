@@ -2432,7 +2432,26 @@ function DashboardContent() {
                 {hs.criticalMetrics.slice(0, 3).map((m, i) => (
                   <span key={i} style={{ background: 'rgba(239,68,68,0.1)', padding: '1px 7px', borderRadius: 8, fontSize: 9 }}>{m}</span>
                 ))}
-                {hs.criticalMetrics.length > 3 && <span>+{hs.criticalMetrics.length - 3} more</span>}
+                {hs.criticalMetrics.length > 3 && (
+                  <span style={{ position: 'relative', cursor: 'pointer' }}
+                    onClick={e => { const el = e.currentTarget.querySelector('.banner-tooltip'); if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex'; }}
+                    onMouseEnter={e => { const el = e.currentTarget.querySelector('.banner-tooltip'); if (el) el.style.display = 'flex'; }}
+                    onMouseLeave={e => { const el = e.currentTarget.querySelector('.banner-tooltip'); if (el) el.style.display = 'none'; }}
+                  >
+                    <span style={{ background: 'rgba(239,68,68,0.15)', padding: '1px 7px', borderRadius: 8, textDecoration: 'underline dotted', cursor: 'pointer' }}>+{hs.criticalMetrics.length - 3} more</span>
+                    <div className="banner-tooltip" style={{
+                      display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                      background: '#1e293b', borderRadius: 10, padding: '8px 10px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.25)', zIndex: 100,
+                      flexDirection: 'column', gap: 4, minWidth: 140, animation: 'fadeIn 0.15s ease-out',
+                    }}>
+                      <span style={{ fontSize: 8, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>All Critical Metrics</span>
+                      {hs.criticalMetrics.map((m, i) => (
+                        <span key={i} style={{ fontSize: 9, color: '#fca5a5', background: 'rgba(239,68,68,0.15)', padding: '2px 8px', borderRadius: 6 }}>{m}</span>
+                      ))}
+                    </div>
+                  </span>
+                )}
               </div>
             )}
             {hs.criticalMetrics.length === 0 && hs.atRiskMetrics.length > 0 && (
@@ -2444,7 +2463,26 @@ function DashboardContent() {
                 {hs.atRiskMetrics.slice(0, 3).map((m, i) => (
                   <span key={i} style={{ background: 'rgba(245,158,11,0.1)', padding: '1px 7px', borderRadius: 8, fontSize: 9 }}>{m}</span>
                 ))}
-                {hs.atRiskMetrics.length > 3 && <span>+{hs.atRiskMetrics.length - 3} more</span>}
+                {hs.atRiskMetrics.length > 3 && (
+                  <span style={{ position: 'relative', cursor: 'pointer' }}
+                    onClick={e => { const el = e.currentTarget.querySelector('.banner-tooltip'); if (el) el.style.display = el.style.display === 'flex' ? 'none' : 'flex'; }}
+                    onMouseEnter={e => { const el = e.currentTarget.querySelector('.banner-tooltip'); if (el) el.style.display = 'flex'; }}
+                    onMouseLeave={e => { const el = e.currentTarget.querySelector('.banner-tooltip'); if (el) el.style.display = 'none'; }}
+                  >
+                    <span style={{ background: 'rgba(245,158,11,0.15)', padding: '1px 7px', borderRadius: 8, textDecoration: 'underline dotted', cursor: 'pointer' }}>+{hs.atRiskMetrics.length - 3} more</span>
+                    <div className="banner-tooltip" style={{
+                      display: 'none', position: 'absolute', top: '100%', right: 0, marginTop: 6,
+                      background: '#1e293b', borderRadius: 10, padding: '8px 10px',
+                      boxShadow: '0 8px 24px rgba(0,0,0,0.25)', zIndex: 100,
+                      flexDirection: 'column', gap: 4, minWidth: 140, animation: 'fadeIn 0.15s ease-out',
+                    }}>
+                      <span style={{ fontSize: 8, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 2 }}>All Warning Metrics</span>
+                      {hs.atRiskMetrics.map((m, i) => (
+                        <span key={i} style={{ fontSize: 9, color: '#fcd34d', background: 'rgba(245,158,11,0.15)', padding: '2px 8px', borderRadius: 6 }}>{m}</span>
+                      ))}
+                    </div>
+                  </span>
+                )}
               </div>
             )}
           </div>
