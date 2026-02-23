@@ -2068,74 +2068,22 @@ function DashboardContent() {
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
 
-  /* ---------- PDF Download ---------- */
-  const handleDownloadPDF = useCallback(async () => {
-    if (pdfExporting || !dashboardRef.current) return;
+  /* ---------- PDF Download (uses browser native print-to-PDF) ---------- */
+  const handleDownloadPDF = useCallback(() => {
+    if (pdfExporting) return;
     setPdfExporting(true);
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
 
-      const el = dashboardRef.current;
+    // Add a temporary class for print-specific styling
+    document.body.classList.add('printing-dashboard');
 
-      // Hide non-essential overlays during capture
-      const hideSelectors = ['.fx-chat-window', '.fx-chat-bubble-btn'];
-      const hiddenEls = [];
-      hideSelectors.forEach(sel => {
-        document.querySelectorAll(sel).forEach(node => {
-          hiddenEls.push({ node, prev: node.style.display });
-          node.style.display = 'none';
-        });
-      });
-
-      // Capture the dashboard exactly as shown on screen (viewport snapshot)
-      const canvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#f8fafc',
-        logging: false,
-        width: el.offsetWidth,
-        height: el.offsetHeight,
-        windowWidth: el.offsetWidth,
-        windowHeight: el.offsetHeight,
-      });
-
-      // Restore hidden elements
-      hiddenEls.forEach(({ node, prev }) => { node.style.display = prev; });
-
-      // Landscape A4
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();   // ~297mm
-      const pageH = pdf.internal.pageSize.getHeight();   // ~210mm
-      const margin = 4;
-      const usableW = pageW - margin * 2;
-      const usableH = pageH - margin * 2;
-
-      // Fit image to page maintaining aspect ratio
-      const imgAspect = canvas.width / canvas.height;
-      const pageAspect = usableW / usableH;
-      let w, h;
-      if (imgAspect > pageAspect) {
-        w = usableW;
-        h = usableW / imgAspect;
-      } else {
-        h = usableH;
-        w = usableH * imgAspect;
-      }
-      const x = margin + (usableW - w) / 2;
-      const y = margin + (usableH - h) / 2;
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.92);
-      pdf.addImage(imgData, 'JPEG', x, y, w, h);
-
-      const fyLabel = selectedFY || 'FY';
-      pdf.save(`${selectedFunction}_OKR_Dashboard_${fyLabel}.pdf`);
-    } catch (err) {
-      console.error('PDF export failed:', err);
-    } finally {
+    // Small delay so the class applies before print dialog opens
+    setTimeout(() => {
+      window.print();
+      // Remove the class after print dialog closes
+      document.body.classList.remove('printing-dashboard');
       setPdfExporting(false);
-    }
-  }, [pdfExporting, selectedFunction, selectedFY]);
+    }, 100);
+  }, [pdfExporting]);
   const openDrill = useCallback((section) => setDrillSection(section), []);
   const closeDrill = useCallback(() => setDrillSection(null), []);
 

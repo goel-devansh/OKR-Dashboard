@@ -882,3 +882,107 @@
     border-radius: 10px !important;
   }
 }
+
+/* ─── Print Styles (PDF Export) ───────────────────────────── */
+@media print {
+  /* Page setup: landscape A4 with no browser margins */
+  @page {
+    size: A4 landscape;
+    margin: 4mm;
+  }
+
+  /* Hide everything not part of the dashboard */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Show dashboard shell and ALL its children */
+  .dashboard-shell,
+  .dashboard-shell * {
+    visibility: visible !important;
+  }
+
+  /* Dashboard fills the page */
+  .dashboard-shell {
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    background: #f8fafc !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    color-adjust: exact !important;
+  }
+
+  /* Hide chat widget, chat button */
+  .fx-chat-window,
+  .fx-chat-bubble-btn {
+    display: none !important;
+  }
+
+  /* Hide interactive elements that don't make sense in PDF */
+  .header-actions button,
+  .health-banner .banner-tooltip {
+    /* Keep buttons visible for context, hide tooltips */
+  }
+  .banner-tooltip {
+    display: none !important;
+  }
+
+  /* Dashboard body fills page */
+  .dashboard-body {
+    overflow: visible !important;
+    height: auto !important;
+    flex: unset !important;
+  }
+
+  /* Sidebar: auto height, show all tiles */
+  .dashboard-sidebar {
+    overflow: visible !important;
+    height: auto !important;
+  }
+  .metric-tiles-scroll {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Main metrics grid: auto height, show all */
+  .dashboard-metrics-grid {
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Ensure colors print correctly */
+  .dashboard-header,
+  .dashboard-sidebar,
+  .health-banner {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* Remove animations for clean print */
+  * {
+    animation: none !important;
+    transition: none !important;
+  }
+
+  /* BSC grid: keep 3 columns */
+  .bsc-section-grid {
+    grid-template-columns: repeat(3, 1fr) !important;
+    gap: 6px !important;
+  }
+
+  /* Prevent page breaks inside cards */
+  .bsc-section-grid > div {
+    break-inside: avoid;
+    page-break-inside: avoid;
+  }
+
+  /* Prevent page breaks inside sections */
+  .bsc-section-header {
+    break-after: avoid;
+    page-break-after: avoid;
+  }
+}
