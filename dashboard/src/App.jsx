@@ -2068,22 +2068,67 @@ function DashboardContent() {
   const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
 
-  /* ---------- PDF Download (uses browser native print-to-PDF) ---------- */
-  const handleDownloadPDF = useCallback(() => {
-    if (pdfExporting) return;
+  /* ---------- PDF Download ---------- */
+  const handleDownloadPDF = useCallback(async () => {
+    if (pdfExporting || !dashboardRef.current) return;
     setPdfExporting(true);
+    try {
+      const html2canvas = (await import('html2canvas')).default;
+      const { jsPDF } = await import('jspdf');
 
-    // Add a temporary class for print-specific styling
-    document.body.classList.add('printing-dashboard');
+      const el = dashboardRef.current;
 
-    // Small delay so the class applies before print dialog opens
-    setTimeout(() => {
-      window.print();
-      // Remove the class after print dialog closes
-      document.body.classList.remove('printing-dashboard');
+      // Hide chat overlays during capture
+      const chatEls = document.querySelectorAll('.fx-chat-window, .fx-chat-bubble-btn');
+      const prevDisplay = [];
+      chatEls.forEach(n => { prevDisplay.push(n.style.display); n.style.display = 'none'; });
+
+      // Capture the visible viewport at scale 2
+      const srcCanvas = await html2canvas(el, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#f8fafc',
+        logging: false,
+      });
+
+      // Restore chat elements
+      chatEls.forEach((n, i) => { n.style.display = prevDisplay[i]; });
+
+      // Resize to a fixed output canvas (1920×1080) so the data stays small
+      const outW = 1920, outH = 1080;
+      const outCanvas = document.createElement('canvas');
+      outCanvas.width = outW;
+      outCanvas.height = outH;
+      const ctx = outCanvas.getContext('2d');
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillRect(0, 0, outW, outH);
+      // Fit source into output maintaining aspect ratio
+      const srcAspect = srcCanvas.width / srcCanvas.height;
+      const outAspect = outW / outH;
+      let dw, dh, dx, dy;
+      if (srcAspect > outAspect) {
+        dw = outW; dh = outW / srcAspect; dx = 0; dy = (outH - dh) / 2;
+      } else {
+        dh = outH; dw = outH * srcAspect; dy = 0; dx = (outW - dw) / 2;
+      }
+      ctx.drawImage(srcCanvas, dx, dy, dw, dh);
+
+      // Convert small canvas to JPEG — this is a controlled ~200KB data URL
+      const imgData = outCanvas.toDataURL('image/jpeg', 0.85);
+
+      // Create single-page landscape PDF matching the output canvas dimensions
+      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [outW, outH] });
+      pdf.addImage(imgData, 'JPEG', 0, 0, outW, outH);
+
+      const fyLabel = selectedFY || 'FY';
+      pdf.save(`${selectedFunction}_OKR_Dashboard_${fyLabel}.pdf`);
+    } catch (err) {
+      console.error('PDF export failed:', err);
+      alert('PDF export failed. Please try Ctrl+P → Save as PDF instead.');
+    } finally {
       setPdfExporting(false);
-    }, 100);
-  }, [pdfExporting]);
+    }
+  }, [pdfExporting, selectedFunction, selectedFY]);
   const openDrill = useCallback((section) => setDrillSection(section), []);
   const closeDrill = useCallback(() => setDrillSection(null), []);
 
