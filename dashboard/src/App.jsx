@@ -2078,108 +2078,55 @@ function DashboardContent() {
 
       const el = dashboardRef.current;
 
-      // Hide non-essential overlays during capture (chat, modals, fixed elements)
-      const hideSelectors = ['.fx-chat-window', '.fx-chat-bubble-btn', '.drill-modal-content'];
+      // Hide non-essential overlays during capture
+      const hideSelectors = ['.fx-chat-window', '.fx-chat-bubble-btn'];
       const hiddenEls = [];
       hideSelectors.forEach(sel => {
-        el.querySelectorAll(sel).forEach(node => {
+        document.querySelectorAll(sel).forEach(node => {
           hiddenEls.push({ node, prev: node.style.display });
           node.style.display = 'none';
         });
       });
 
-      // Temporarily expand to full content for capture
-      const origHeight = el.style.height;
-      const origOverflow = el.style.overflow;
-      el.style.height = 'auto';
-      el.style.overflow = 'visible';
-
-      // Also expand the dashboard-body so sidebar + main scroll content is visible
-      const bodyEl = el.querySelector('.dashboard-body');
-      const origBodyOverflow = bodyEl ? bodyEl.style.overflow : '';
-      const origBodyHeight = bodyEl ? bodyEl.style.height : '';
-      if (bodyEl) {
-        bodyEl.style.overflow = 'visible';
-        bodyEl.style.height = 'auto';
-      }
-
-      // Expand scrollable areas within sidebar and main content
-      const scrollEls = el.querySelectorAll('.metric-tiles-scroll, .dashboard-metrics-grid');
-      const origScrollStyles = [];
-      scrollEls.forEach(se => {
-        origScrollStyles.push({ node: se, overflow: se.style.overflow, overflowY: se.style.overflowY, height: se.style.height, maxHeight: se.style.maxHeight });
-        se.style.overflow = 'visible';
-        se.style.overflowY = 'visible';
-        se.style.height = 'auto';
-        se.style.maxHeight = 'none';
-      });
-
+      // Capture the dashboard exactly as shown on screen (viewport snapshot)
       const canvas = await html2canvas(el, {
-        scale: 1.5,
+        scale: 2,
         useCORS: true,
         backgroundColor: '#f8fafc',
         logging: false,
-        windowWidth: 1440,
-        scrollY: 0,
-        windowHeight: el.scrollHeight,
+        width: el.offsetWidth,
+        height: el.offsetHeight,
+        windowWidth: el.offsetWidth,
+        windowHeight: el.offsetHeight,
       });
 
-      // Restore all original styles
-      el.style.height = origHeight;
-      el.style.overflow = origOverflow;
-      if (bodyEl) {
-        bodyEl.style.overflow = origBodyOverflow;
-        bodyEl.style.height = origBodyHeight;
-      }
-      scrollEls.forEach((se, i) => {
-        const orig = origScrollStyles[i];
-        se.style.overflow = orig.overflow;
-        se.style.overflowY = orig.overflowY;
-        se.style.height = orig.height;
-        se.style.maxHeight = orig.maxHeight;
-      });
+      // Restore hidden elements
       hiddenEls.forEach(({ node, prev }) => { node.style.display = prev; });
 
-      // Landscape A4 with pagination
+      // Landscape A4
       const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
-      const pageW = pdf.internal.pageSize.getWidth();
-      const pageH = pdf.internal.pageSize.getHeight();
-      const margin = 6;
+      const pageW = pdf.internal.pageSize.getWidth();   // ~297mm
+      const pageH = pdf.internal.pageSize.getHeight();   // ~210mm
+      const margin = 4;
       const usableW = pageW - margin * 2;
       const usableH = pageH - margin * 2;
 
-      // Scale image width to fit page width, then paginate vertically
-      const imgW = usableW;
-      const imgH = (canvas.height / canvas.width) * imgW;
-
-      if (imgH <= usableH) {
-        // Fits on one page — center vertically
-        const imgData = canvas.toDataURL('image/jpeg', 0.85);
-        pdf.addImage(imgData, 'JPEG', margin, margin + (usableH - imgH) / 2, imgW, imgH);
+      // Fit image to page maintaining aspect ratio
+      const imgAspect = canvas.width / canvas.height;
+      const pageAspect = usableW / usableH;
+      let w, h;
+      if (imgAspect > pageAspect) {
+        w = usableW;
+        h = usableW / imgAspect;
       } else {
-        // Multi-page: slice the canvas into page-sized vertical strips
-        const pageCanvasH = (usableH / imgH) * canvas.height;
-        let yPos = 0;
-        let pageNum = 0;
-
-        while (yPos < canvas.height) {
-          if (pageNum > 0) pdf.addPage();
-
-          const sliceH = Math.min(pageCanvasH, canvas.height - yPos);
-          const pageCanvas = document.createElement('canvas');
-          pageCanvas.width = canvas.width;
-          pageCanvas.height = sliceH;
-          const ctx = pageCanvas.getContext('2d');
-          ctx.drawImage(canvas, 0, yPos, canvas.width, sliceH, 0, 0, canvas.width, sliceH);
-
-          const sliceData = pageCanvas.toDataURL('image/jpeg', 0.85);
-          const sliceImgH = (sliceH / canvas.width) * imgW;
-          pdf.addImage(sliceData, 'JPEG', margin, margin, imgW, sliceImgH);
-
-          yPos += sliceH;
-          pageNum++;
-        }
+        h = usableH;
+        w = usableH * imgAspect;
       }
+      const x = margin + (usableW - w) / 2;
+      const y = margin + (usableH - h) / 2;
+
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      pdf.addImage(imgData, 'JPEG', x, y, w, h);
 
       const fyLabel = selectedFY || 'FY';
       pdf.save(`${selectedFunction}_OKR_Dashboard_${fyLabel}.pdf`);
