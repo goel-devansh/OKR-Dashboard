@@ -56,7 +56,8 @@
       "Bash(cmd.exe /c \"netstat -aon | findstr 3001\")",
       "WebFetch(domain:console.groq.com)",
       "Bash(npx kill-port:*)",
-      "Bash(cd:*)"
+      "Bash(cd:*)",
+      "Bash(tasklist /FI \"IMAGENAME eq node.exe\" /V)"
     ]
   }
 }
