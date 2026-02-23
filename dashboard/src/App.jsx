@@ -2784,7 +2784,7 @@ function DashboardContent() {
                       /* ---- Pipeline Coverage ---- */
                       if (mk === 'pipelineCoverage') return (
                         <MetricSummaryCard key="pipelineCoverage" title="Pipeline Coverage" value={`${(pipelineCoverage?.coverage || 0).toFixed(1)}x`}
-                          target="3" unit="x" achievement={null} color="#0ea5e9" onClick={() => openDrill('pipelineCoverage')}
+                          target="3" unit="x" achievement={metricAchievements.pipelineCoverage} color="#0ea5e9" onClick={() => openDrill('pipelineCoverage')}
                           weight={weightages[mk]?.weight || 0} animIndex={ci}
                         >
                           {(() => {
