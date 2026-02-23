@@ -2066,48 +2066,6 @@ function DashboardContent() {
     setCollapsedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
   }, []);
   const dashboardRef = useRef(null);
-  const [pdfExporting, setPdfExporting] = useState(false);
-
-  /* ---------- PDF Download ---------- */
-  const handleDownloadPDF = useCallback(async () => {
-    if (pdfExporting || !dashboardRef.current) return;
-    setPdfExporting(true);
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-
-      const el = dashboardRef.current;
-
-      // Hide chat overlays
-      const chatEls = document.querySelectorAll('.fx-chat-window, .fx-chat-bubble-btn');
-      chatEls.forEach(n => { n.dataset.prevDisplay = n.style.display; n.style.display = 'none'; });
-
-      // Capture at scale 1 — smallest possible canvas
-      const canvas = await html2canvas(el, {
-        scale: 1,
-        useCORS: true,
-        backgroundColor: '#f8fafc',
-        logging: false,
-        width: el.clientWidth,
-        height: el.clientHeight,
-      });
-
-      // Restore chat
-      chatEls.forEach(n => { n.style.display = n.dataset.prevDisplay || ''; });
-
-      // Create PDF with page size matching canvas exactly (in pt)
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'pt', format: [canvas.width, canvas.height] });
-
-      // Pass canvas element directly — avoids massive base64 data URL
-      pdf.addImage(canvas, 'PNG', 0, 0, canvas.width, canvas.height, undefined, 'FAST');
-
-      pdf.save(`${selectedFunction}_OKR_Dashboard_${selectedFY || 'FY'}.pdf`);
-    } catch (err) {
-      console.error('PDF export failed:', err);
-    } finally {
-      setPdfExporting(false);
-    }
-  }, [pdfExporting, selectedFunction, selectedFY]);
 
   const openDrill = useCallback((section) => setDrillSection(section), []);
   const closeDrill = useCallback(() => setDrillSection(null), []);
@@ -2338,19 +2296,6 @@ function DashboardContent() {
               🎯<span className="btn-label"> Balanced Scorecard</span>
             </button>
           )}
-          {/* PDF Download Button */}
-          <button onClick={handleDownloadPDF} disabled={pdfExporting} style={{
-            display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
-            border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
-            color: '#E81F76', fontSize: 10, fontWeight: 700, cursor: pdfExporting ? 'wait' : 'pointer',
-            textTransform: 'uppercase', letterSpacing: 0.5, transition: 'all 0.2s',
-            opacity: pdfExporting ? 0.6 : 1,
-          }}
-            onMouseEnter={e => { if (!pdfExporting) e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
-          >
-            {pdfExporting ? <><span>⏳</span><span className="btn-label"> Exporting...</span></> : <><span>📄</span><span className="btn-label"> Download PDF</span></>}
-          </button>
           {/* Key Takeaways Button */}
           <button onClick={() => setShowTakeaways(true)} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
