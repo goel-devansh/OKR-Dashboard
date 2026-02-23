@@ -2065,70 +2065,7 @@ function DashboardContent() {
   const toggleSection = useCallback((sectionKey) => {
     setCollapsedSections(prev => ({ ...prev, [sectionKey]: !prev[sectionKey] }));
   }, []);
-  const [pdfExporting, setPdfExporting] = useState(false);
   const dashboardRef = useRef(null);
-
-  /* ---------- PDF Download ---------- */
-  const handleDownloadPDF = useCallback(async () => {
-    if (pdfExporting || !dashboardRef.current) return;
-    setPdfExporting(true);
-    try {
-      const html2canvas = (await import('html2canvas')).default;
-      const { jsPDF } = await import('jspdf');
-
-      const el = dashboardRef.current;
-
-      // Hide chat overlays during capture
-      const chatEls = document.querySelectorAll('.fx-chat-window, .fx-chat-bubble-btn');
-      const prevDisplay = [];
-      chatEls.forEach(n => { prevDisplay.push(n.style.display); n.style.display = 'none'; });
-
-      // Capture the visible viewport at scale 2
-      const srcCanvas = await html2canvas(el, {
-        scale: 2,
-        useCORS: true,
-        backgroundColor: '#f8fafc',
-        logging: false,
-      });
-
-      // Restore chat elements
-      chatEls.forEach((n, i) => { n.style.display = prevDisplay[i]; });
-
-      // Resize to a fixed output canvas (1920×1080) so the data stays small
-      const outW = 1920, outH = 1080;
-      const outCanvas = document.createElement('canvas');
-      outCanvas.width = outW;
-      outCanvas.height = outH;
-      const ctx = outCanvas.getContext('2d');
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(0, 0, outW, outH);
-      // Fit source into output maintaining aspect ratio
-      const srcAspect = srcCanvas.width / srcCanvas.height;
-      const outAspect = outW / outH;
-      let dw, dh, dx, dy;
-      if (srcAspect > outAspect) {
-        dw = outW; dh = outW / srcAspect; dx = 0; dy = (outH - dh) / 2;
-      } else {
-        dh = outH; dw = outH * srcAspect; dy = 0; dx = (outW - dw) / 2;
-      }
-      ctx.drawImage(srcCanvas, dx, dy, dw, dh);
-
-      // Convert small canvas to JPEG — this is a controlled ~200KB data URL
-      const imgData = outCanvas.toDataURL('image/jpeg', 0.85);
-
-      // Create single-page landscape PDF matching the output canvas dimensions
-      const pdf = new jsPDF({ orientation: 'landscape', unit: 'px', format: [outW, outH] });
-      pdf.addImage(imgData, 'JPEG', 0, 0, outW, outH);
-
-      const fyLabel = selectedFY || 'FY';
-      pdf.save(`${selectedFunction}_OKR_Dashboard_${fyLabel}.pdf`);
-    } catch (err) {
-      console.error('PDF export failed:', err);
-      alert('PDF export failed. Please try Ctrl+P → Save as PDF instead.');
-    } finally {
-      setPdfExporting(false);
-    }
-  }, [pdfExporting, selectedFunction, selectedFY]);
   const openDrill = useCallback((section) => setDrillSection(section), []);
   const closeDrill = useCallback(() => setDrillSection(null), []);
 
@@ -2358,19 +2295,6 @@ function DashboardContent() {
               🎯<span className="btn-label"> Balanced Scorecard</span>
             </button>
           )}
-          {/* PDF Download Button */}
-          <button onClick={handleDownloadPDF} disabled={pdfExporting} style={{
-            display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
-            border: '1px solid rgba(232,31,118,0.4)', background: 'rgba(232,31,118,0.1)',
-            color: '#E81F76', fontSize: 10, fontWeight: 700, cursor: pdfExporting ? 'wait' : 'pointer',
-            textTransform: 'uppercase', letterSpacing: 0.5, transition: 'all 0.2s',
-            opacity: pdfExporting ? 0.6 : 1,
-          }}
-            onMouseEnter={e => { if (!pdfExporting) e.currentTarget.style.background = 'rgba(232,31,118,0.2)'; }}
-            onMouseLeave={e => { e.currentTarget.style.background = 'rgba(232,31,118,0.1)'; }}
-          >
-            {pdfExporting ? <><span>⏳</span><span className="btn-label"> Exporting...</span></> : <><span>📄</span><span className="btn-label"> Download PDF</span></>}
-          </button>
           {/* Key Takeaways Button */}
           <button onClick={() => setShowTakeaways(true)} style={{
             display: 'flex', alignItems: 'center', gap: 5, padding: '4px 12px', borderRadius: 6,
